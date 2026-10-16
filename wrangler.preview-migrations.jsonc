@@ -1,0 +1,14 @@
+{
+  // Only used to apply migrations/ to the staging database that Previews share
+  // (npm run worker:preview). Must match "previews.d1_databases" in wrangler.jsonc.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "baht-dollar-budget",
+  "d1_databases": [
+    {
+      "binding": "PREVIEW_DB",
+      "database_name": "baht-dollar-budget-preview",
+      "database_id": "ad9fc1e5-49ae-403b-9ae4-e6373c876ae9",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

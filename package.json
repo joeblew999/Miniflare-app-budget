@@ -13,6 +13,7 @@
     "worker:types": "node cli/main.ts worker types",
     "worker:deploy": "node cli/main.ts worker deploy",
     "worker:ci": "node cli/main.ts worker ci",
+    "worker:preview": "node cli/main.ts worker preview",
     "db:gen": "node cli/main.ts db gen",
     "db:migrate": "node cli/main.ts db migrate",
     "test:run": "node cli/main.ts test run",

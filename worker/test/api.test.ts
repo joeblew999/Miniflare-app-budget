@@ -82,6 +82,29 @@ describe("worker", () => {
 
   it("serves the OpenAPI spec for the contract", async () => {
     const spec = await (await call("/api/spec.json")).json<{ paths: Record<string, object> }>()
-    expect(Object.keys(spec.paths).sort()).toEqual(["/budget", "/me"])
+    expect(Object.keys(spec.paths).sort()).toEqual(["/budget", "/config", "/me"])
+  })
+
+  it("does not offer guest sign-in on a normal host (production)", async () => {
+    expect(await (await call("/api/config")).json()).toEqual({ guestSignIn: false })
+    const res = await call("/api/auth/sign-in/anonymous", { method: "POST", body: "{}" })
+    expect(res.status).toBe(404)
+  })
+
+  it("allows guest sign-in on localhost, with a working budget", async () => {
+    const local = (path: string, init: RequestInit = {}, cookie?: string) => {
+      const headers = new Headers(init.headers)
+      headers.set("origin", "http://localhost")
+      if (cookie) headers.set("cookie", cookie)
+      if (init.body) headers.set("content-type", "application/json")
+      return worker.fetch(new Request("http://localhost" + path, { ...init, headers }))
+    }
+    expect(await (await local("/api/config")).json()).toEqual({ guestSignIn: true })
+    const res = await local("/api/auth/sign-in/anonymous", { method: "POST", body: "{}" })
+    expect(res.status).toBe(200)
+    const cookie = res.headers.get("set-cookie")!.split(";")[0]
+    expect(await (await local("/api/me", {}, cookie)).json()).toMatchObject({ isGuest: true })
+    const put = await local("/api/budget", { method: "PUT", body: JSON.stringify(myBudget) }, cookie)
+    expect(put.status).toBe(200)
   })
 })

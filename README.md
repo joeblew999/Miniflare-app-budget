@@ -34,6 +34,7 @@ enough to run locally. For Cloudflare, set your own values in `fnox.local.toml` 
     npm run worker:types        # regenerate worker-configuration.d.ts
     npm run worker:deploy       # build and deploy from your machine (fnox production profile)
     npm run worker:ci           # deploy step used by Cloudflare Workers Builds
+    npm run worker:preview      # Preview step used by Workers Builds (staging DB, guest sign-in)
     npm run db:gen -- NAME      # write a migration after changing worker/db/schema.ts
     npm run db:migrate          # apply migrations locally (add -- --remote for Cloudflare)
     npm run test:run            # run tests in workerd
@@ -53,6 +54,12 @@ The API is defined once, in `shared/contract.ts`, and served by the Worker in tw
 - `/api/*`: the same procedures as REST: `GET /api/me`, `GET /api/budget`, `PUT /api/budget`
 - `/api/docs`: interactive API docs (Scalar); `/api/spec.json` is the OpenAPI 3.2 document
 - `/api/auth/*`: Better Auth (sign up, sign in, sign out, session)
+
+## Live
+
+- Production: https://baht-dollar-budget.gedw99.workers.dev (built from `main`)
+- Previews: every other branch gets its own Preview URL, using a staging database. Sign in with
+  **Continue as guest**, which is only offered in Previews and local dev.
 
 ## Deploy (Cloudflare Workers Builds)
 

@@ -12,10 +12,17 @@ const authed = oc.errors({
 })
 
 export const contract = {
+  config: {
+    get: oc
+      .meta(openapi({ method: "GET", path: "/config", tags: ["App"], summary: "Public settings for this deployment" }))
+      .output(z.object({
+        guestSignIn: z.boolean().describe("Whether \"Continue as guest\" is offered (Previews and local dev only)"),
+      })),
+  },
   me: {
     get: authed
       .meta(openapi({ method: "GET", path: "/me", tags: ["Account"], summary: "The signed-in user" }))
-      .output(UserSchema),
+      .output(UserSchema.extend({ isGuest: z.boolean() })),
   },
   budget: {
     get: authed

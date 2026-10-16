@@ -11,7 +11,7 @@ import { OpenAPIHandler } from "@orpc/openapi/fetch"
 import { OpenAPIReferenceHandlerPlugin } from "@orpc/openapi/plugins"
 import { ZodToJsonSchemaConverter } from "@orpc/zod"
 import { contract } from "@shared/contract"
-import { createAuth } from "./auth"
+import { createAuth, guestSignInAllowed } from "./auth"
 import { createDb } from "./db"
 import { type Context, router } from "./router"
 
@@ -44,10 +44,10 @@ export default {
     if (url.pathname === "/api/health") return Response.json({ ok: true })
 
     const db = createDb(env.DB)
-    const auth = createAuth(env, db, url.origin)
+    const auth = createAuth(env, db, url)
     if (url.pathname.startsWith("/api/auth/")) return auth.handler(request)
 
-    const context: Context = { headers: request.headers, db, auth }
+    const context: Context = { headers: request.headers, db, auth, guestSignIn: guestSignInAllowed(env, url) }
     for (const [handler, prefix] of [[rpc, "/api/rpc"], [rest, "/api"]] as const) {
       const { matched, response } = await handler.handle(request, { prefix, context })
       if (matched) return response

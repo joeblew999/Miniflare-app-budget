@@ -1,19 +1,27 @@
 // Better Auth on D1. Email + password sign-in; sessions in cookies under /api/auth/*.
+// Guest sign-in (the anonymous plugin) is only switched on where it's safe: Previews and local dev.
 import { betterAuth } from "better-auth"
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
+import { anonymous } from "better-auth/plugins"
 import type { DB } from "./db"
 import * as schema from "./db/schema"
 
-export function createAuth(env: Env, db: DB, origin: string) {
+/** Guest sign-in is allowed when the Worker's GUEST_SIGN_IN var is "true" (Previews), or on localhost (local dev). */
+export function guestSignInAllowed(env: Env, url: URL): boolean {
+  return env.GUEST_SIGN_IN === "true" || url.hostname === "localhost" || url.hostname === "127.0.0.1"
+}
+
+export function createAuth(env: Env, db: DB, url: URL) {
   return betterAuth({
     secret: env.BETTER_AUTH_SECRET,
-    baseURL: origin,
+    baseURL: url.origin,
     basePath: "/api/auth",
     database: drizzleAdapter(db, {
       provider: "sqlite",
       schema: { user: schema.user, session: schema.session, account: schema.account, verification: schema.verification },
     }),
     emailAndPassword: { enabled: true, minPasswordLength: 8 },
+    plugins: guestSignInAllowed(env, url) ? [anonymous({ emailDomainName: "guest.invalid" })] : [],
   })
 }
 

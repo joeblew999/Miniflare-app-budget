@@ -11,7 +11,8 @@ export default function App() {
   const session = authClient.useSession()
   if (session.isPending) return <Centered>Loading…</Centered>
   if (!session.data) return <SignIn />
-  return <BudgetScreen email={session.data.user.email} />
+  const user = session.data.user
+  return <BudgetScreen email={user.isAnonymous ? "Guest" : user.email} />
 }
 
 function BudgetScreen({ email }: { email: string }) {
