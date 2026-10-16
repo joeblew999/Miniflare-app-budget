@@ -49,6 +49,7 @@ Rules:
 - No bare script names (`dev`, `build`, `start`). Always `noun:verb`, and the npm script must match the CLI path (`app:build` → `cli/main.ts app build`).
 - Reuse short verbs across nouns: `dev`, `check`, `build`, `preview`, `lint`, `smoke`, `setup`, `status`, `logs`, `types`, `deploy`, `ci`, `gen`, `migrate`, `run`, `watch`, `add`, `show`, `set`, `list`.
 - A new command goes in this table and in the README in the same change.
+- Every command prints timings to stderr: each tool it runs (tsc, vite, wrangler…) and its total, including on failure. They come from Commander's `preAction` hook in `cli/main.ts` and `logTiming` in `cli/run.ts`. Set `BUDGET_TIMINGS=0` to hide them.
 - Pass arguments after `--`, e.g. `npm run db:gen -- add-notes`, `npm run ui:add -- dialog`, `npm run db:migrate -- --remote`. `npm run cli -- --help` lists everything.
 
 ## Folder layout
