@@ -4,8 +4,8 @@ import { existsSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
-/** Repo root (the folder above cli/). */
-export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
+/** Repo root (two folders above this file, cli/lib/). */
+export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 
 /** The BETTER_AUTH_SECRET default in fnox.toml. Never allowed to reach Cloudflare. */
 export const DEV_SECRET = "local-dev-only-secret-do-not-deploy-0000"

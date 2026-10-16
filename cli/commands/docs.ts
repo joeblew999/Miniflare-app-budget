@@ -6,26 +6,14 @@
 import type { Command } from "commander"
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
-import { capture, fail, root } from "../run.ts"
-import { createProgram } from "../program.ts"
-
-interface Pkg { scripts: Record<string, string>; wireit: Record<string, { command?: string; dependencies?: string[] }> }
+import { capture, fail, root } from "../lib/run.ts"
+import { cliCommands, cliPath, readPackageJson } from "../program.ts"
 
 export function register(program: Command): void {
   const docs = program.command("docs").description("The docs (README.md, CLAUDE.md)")
   docs.command("gen").description("Write docs/commands.md from package.json and the CLI, and fail on any mention of a command that doesn't exist")
     .action(gen)
 }
-
-/** Every CLI command as "noun verb", with its Commander command. */
-function cliCommands(): Map<string, Command> {
-  const all = new Map<string, Command>()
-  for (const noun of createProgram().commands) for (const verb of noun.commands) all.set(`${noun.name()} ${verb.name()}`, verb)
-  return all
-}
-
-/** The CLI command a goal or step runs ("app dev" for `node cli/main.ts app dev`), if any. */
-const cliPath = (command?: string) => command?.match(/^node cli\/main\.ts (\S+ \S+)/)?.[1]
 
 /** How to pass a command's arguments and options after `--`. */
 function argsOf(cmd?: Command): string {
@@ -37,7 +25,7 @@ function argsOf(cmd?: Command): string {
 }
 
 function gen(): void {
-  const pkg = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")) as Pkg
+  const pkg = readPackageJson()
   const commands = cliCommands()
   const goals = Object.keys(pkg.scripts).filter((s) => s !== "cli")
   const steps = Object.keys(pkg.wireit).filter((s) => !(s in pkg.scripts))
@@ -50,10 +38,6 @@ function gen(): void {
   }
   const args = (name: string) => argsOf(commands.get(cliPath(pkg.wireit[name]?.command) ?? ""))
   const runsFirst = (name: string) => (pkg.wireit[name]?.dependencies ?? []).map((d) => `\`${d}\``).join(", ")
-  const used = new Set([...goals, ...steps].map((n) => cliPath(pkg.wireit[n]?.command)))
-  const unwired = [...commands.keys()].filter((c) => !used.has(c))
-  if (unwired.length)
-    fail(`Every CLI command must be a goal (scripts and wireit) or a step (wireit only) in package.json. Not wired in:\n  ${unwired.join("\n  ")}`)
 
   const md = [
     "# Commands",

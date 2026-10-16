@@ -5,7 +5,7 @@ import { cpSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync }
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { PRESET_BASE_COLORS, PRESET_THEMES, decodePreset, encodePreset } from "shadcn/preset"
-import { capture, root, run } from "../run.ts"
+import { capture, root, run } from "../lib/run.ts"
 
 const CSS_OUT = path.join(root, "src/styles/themes.css")
 const JSON_OUT = path.join(root, "src/styles/themes.json")

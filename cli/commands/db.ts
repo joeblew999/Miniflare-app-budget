@@ -1,5 +1,5 @@
 import type { Command } from "commander"
-import { run } from "../run.ts"
+import { run } from "../lib/run.ts"
 
 const DB = "DB" // binding name in wrangler.jsonc
 const production = { profile: "production" }
