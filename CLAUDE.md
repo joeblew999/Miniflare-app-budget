@@ -56,7 +56,7 @@ Rules:
 
 ```
 artifact/       glue for `app:artifact`: an oRPC link that calls the router in the page, D1 on sql.js, a cookie jar for Better Auth. No app logic
-cli/            project CLI: main.ts, run.ts, commands/<noun>.ts; smoke.ts (HTTP checks of a running app); artifact-check.ts (browser check of the artifact build); cloudflare.ts (REST client), cloud.ts (setup/build/status/logs), project.ts (reads wrangler.jsonc, git remote)
+cli/            project CLI: main.ts, run.ts, commands/<noun>.ts; smoke.ts (HTTP checks of a running app); browser-checks.ts (Playwright checks: the artifact build, and offline use); cloudflare.ts (REST client), cloud.ts (setup/build/status/logs), project.ts (reads wrangler.jsonc, git remote)
 shared/         runtime-neutral code used by both src/ and worker/
   schema.ts         Zod schemas: the shape of a budget (types are inferred from these)
   contract.ts       oRPC contract: procedures, inputs, outputs, errors, REST routes
@@ -124,6 +124,16 @@ An artifact can't reach any server (local or Cloudflare), so `npm run app:artifa
 ## Verifying a deploy
 
 After a push, check the deployed copy with `npm run app:smoke -- --url <url>`. On production it runs read-only checks (page, deep links, health, 401 without a session, spec and docs, guest sign-in closed). On a Preview or local dev it also signs in as a throwaway guest and saves and loads a budget, which only touches the staging or local database. Preview URLs are `https://<branch>-baht-dollar-budget.gedw99.workers.dev`.
+
+Add `--offline` on a Preview or `app:preview` (not `app:dev`, which has no service worker) to check offline use in a browser: edit offline, reload with no connection, reconnect and sync, and an older offline edit losing to a newer save from another device.
+
+## Offline
+
+The app works offline. Change these parts together:
+- `vite.config.ts`: the service worker (vite-plugin-pwa) keeps the built app in the browser. It never caches `/api/*`. It is not in the artifact build.
+- `src/App.tsx`: when the session can't be checked (offline), the last signed-in user is used. Sign-in only shows when the server says there's no session.
+- `src/hooks/use-budget.ts` and `src/lib/storage.ts`: each user's last server copy and an outbox of unsent edits, in localStorage. Edits go to the outbox first, then to the server when online.
+- Latest edit wins: `budget.save` takes `editedAt`, and the server doesn't apply an edit older than the saved budget (`applied: false`); the app then loads the newer one. `budget.get` returns `savedAt`.
 
 ## Git
 

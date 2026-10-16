@@ -54,7 +54,7 @@ describe("worker", () => {
     const cookie = await signUp("new@example.com")
     const res = await call("/api/budget", {}, cookie)
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ budget: START, isNew: true })
+    expect(await res.json()).toEqual({ budget: START, isNew: true, savedAt: null })
   })
 
   it("saves and loads a budget over REST, in order, with tags", async () => {
@@ -62,7 +62,21 @@ describe("worker", () => {
     const put = await call("/api/budget", { method: "PUT", body: JSON.stringify(myBudget) }, cookie)
     expect(put.status).toBe(200)
     const got = await (await call("/api/budget", {}, cookie)).json()
-    expect(got).toEqual({ budget: myBudget, isNew: false })
+    expect(got).toMatchObject({ budget: myBudget, isNew: false })
+    expect(Date.parse((got as { savedAt: string }).savedAt)).toBeGreaterThan(Date.now() - 60_000)
+  })
+
+  it("keeps the latest edit when an older one arrives later (offline device)", async () => {
+    const cookie = await signUp("two-devices@example.com")
+    const put = (rate: number, editedAt: string) =>
+      call("/api/budget", { method: "PUT", body: JSON.stringify({ ...myBudget, rate, editedAt }) }, cookie)
+    const newer = await (await put(30, "2026-10-16T10:30:00.000Z")).json()
+    expect(newer).toEqual({ savedAt: "2026-10-16T10:30:00.000Z", applied: true })
+    const older = await (await put(20, "2026-10-16T10:00:00.000Z")).json()
+    expect(older).toEqual({ savedAt: "2026-10-16T10:30:00.000Z", applied: false })
+    const got = await (await call("/api/budget", {}, cookie)).json<{ budget: { rate: number }; savedAt: string }>()
+    expect(got.budget.rate).toBe(30)
+    expect(got.savedAt).toBe("2026-10-16T10:30:00.000Z")
   })
 
   it("keeps each person's budget separate", async () => {

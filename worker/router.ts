@@ -38,9 +38,10 @@ export const router = base.router({
   },
   budget: {
     get: authed.budget.get.handler(({ context }) => loadBudget(context.db, context.user.id)),
-    save: authed.budget.save.handler(async ({ context, input }) => ({
-      savedAt: (await saveBudget(context.db, context.user.id, input)).toISOString(),
-    })),
+    save: authed.budget.save.handler(async ({ context, input: { editedAt, ...budget } }) => {
+      const { savedAt, applied } = await saveBudget(context.db, context.user.id, budget, editedAt)
+      return { savedAt: savedAt.toISOString(), applied }
+    }),
   },
 })
 
