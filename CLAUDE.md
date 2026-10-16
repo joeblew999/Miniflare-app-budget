@@ -21,7 +21,7 @@ Conventions for working in this repo: Baht & Dollar Budget, a contract-first app
 
 | File | Holds | Never holds |
 |---|---|---|
-| `mise.toml` | Tool versions only (`[tools]`: node, fnox) | Tasks, env vars, secrets |
+| `mise.toml` | Tool versions only (`[tools]`: node, fnox from its GitHub release) | Tasks, env vars, secrets |
 | `package.json` | Every command, as `noun:verb` npm scripts that call `cli/` | Secrets, logic |
 | `fnox.toml` | Names of secrets and env vars the project needs | Real secret values |
 

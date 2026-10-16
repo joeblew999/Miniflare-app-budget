@@ -1,4 +1,4 @@
 # Tools only. Commands live in package.json (noun:verb), secrets and env in fnox.toml.
 [tools]
 node = "24"
-fnox = "1.39.0"
+"github:jdx/fnox" = "1.39.0"
