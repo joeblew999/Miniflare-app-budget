@@ -2,9 +2,9 @@ import type { Command } from "commander"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { cf, cfMaybe, credentials, randomSecret, sleep } from "../lib/cloudflare.ts"
+import { cf, cfMaybe, credentials, randomSecret, scriptTag, sleep, withCloudflare, type BuildConfig, type EnvVar } from "../lib/cloudflare.ts"
 import { BUILD, githubRepo, requiredSecrets, stagingDatabase, workerName, writeStagingDatabaseId } from "../lib/project.ts"
-import { DEV_SECRET, fail, run, tryRun } from "../lib/run.ts"
+import { capture, DEV_SECRET, fail, run, tryRun } from "../lib/run.ts"
 
 const SECRETS = ["BETTER_AUTH_SECRET"] // must match "secrets.required" in wrangler.jsonc
 const migrateRemote = ["d1", "migrations", "apply", "DB", "--remote", "--config", "wrangler.jsonc"]
@@ -15,14 +15,14 @@ export function register(program: Command): void {
   worker.command("types").description("Regenerate worker-configuration.d.ts from wrangler.jsonc")
     .action(() => run("wrangler", ["types", "--strict-vars=false"])) // vars typed as string, since Previews override them
 
-  worker.command("deploy").description("Deploy the build in dist/ from your machine (credentials and secrets from your fnox production profile)")
-    .action(() => run("node", ["cli/main.ts", "worker", "ci"], { secrets: { profile: "production" } }))
+  worker.command("deploy").description("Deploy the build in dist/ to production from your machine (credentials from your fnox production profile; the Worker keeps its secrets)")
+    .action(() => withCloudflare(ciDeploy))
 
   worker.command("ci").description("Workers Builds' deploy command (after its app:build): migrate D1, then deploy with secrets from the environment")
-    .action(ciDeploy)
+    .action(() => withCloudflare(ciDeploy))
 
-  worker.command("preview").description("Workers Builds' preview command (after its app:build), one Preview per branch: migrate the staging D1, then deploy a Preview")
-    .action(previewDeploy)
+  worker.command("preview").description("Deploy this branch's Preview (Workers Builds' preview command, and how agents deploy): migrate the staging D1, then deploy a Preview")
+    .action(() => withCloudflare(previewDeploy))
 
   worker.command("setup").description("Create or update everything on Cloudflare: Worker, staging DB, Workers Builds, Previews, secrets (safe to re-run)")
     .option("--rotate-secrets", "generate new values for the Worker's secrets")
@@ -40,34 +40,30 @@ export function register(program: Command): void {
     .action((uuid?: string) => withCloudflare(() => logs(uuid)))
 }
 
-/** Cloudflare API commands need credentials: re-run this command under the fnox production profile if they're not set. */
-function withCloudflare(fn: () => Promise<void>): void {
-  if (!process.env.CLOUDFLARE_API_TOKEN && !process.env.BUDGET_CLI_FNOX) {
-    run("node", [process.argv[1], ...process.argv.slice(2)], { secrets: { profile: "production" }, env: { BUDGET_CLI_FNOX: "1" } })
-    return
-  }
-  fn().catch((e: unknown) => fail(e instanceof Error ? e.message : String(e)))
-}
-
-/** Read the required secrets from the environment, refusing missing or dev-default values. */
+/**
+ * The required secrets that are set in the environment (Workers Builds' build variables). One that isn't set keeps
+ * the value the Worker already has, so deploying from a machine or a cloud session needs no secrets; wrangler's
+ * secrets.required check still fails a Worker that has none. The local dev default is always refused.
+ */
 function secretsFromEnv(): Record<string, string> {
   const values: Record<string, string> = {}
   for (const name of SECRETS) {
     const value = process.env[name]?.trim()
-    if (!value) fail(`${name} is not set. In Workers Builds add it under Settings > Build > Variables and secrets; locally set it in your fnox production profile.`)
-    if (value === DEV_SECRET) fail(`${name} is still the local dev default. Set a real value before deploying.`)
-    values[name] = value
+    if (value === DEV_SECRET) fail(`${name} is the local dev default. It must never reach Cloudflare.`)
+    if (value) values[name] = value
+    else console.log(`${name} isn't set here, so the Worker keeps the value it has.`)
   }
   return values
 }
 
-/** Write secrets to a private temp file for wrangler's --secrets-file, and always delete it afterwards. */
-function withSecretsFile(values: Record<string, string>, fn: (file: string) => void): void {
+/** wrangler's --secrets-file for the given secrets, in a private temp file that is always deleted afterwards. */
+function withSecretsFile(values: Record<string, string>, fn: (args: string[]) => void): void {
+  if (!Object.keys(values).length) return fn([])
   const dir = mkdtempSync(path.join(tmpdir(), "secrets-"))
   const file = path.join(dir, "secrets.json")
   try {
     writeFileSync(file, JSON.stringify(values), { mode: 0o600 })
-    fn(file)
+    fn(["--secrets-file", file])
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
@@ -77,13 +73,13 @@ function withSecretsFile(values: Record<string, string>, fn: (file: string) => v
 function previewDeploy(): void {
   const values = secretsFromEnv()
   run("wrangler", ["d1", "migrations", "apply", "PREVIEW_DB", "--remote", "--config", "wrangler.preview-migrations.jsonc"])
-  withSecretsFile(values, (file) => run("wrangler", ["preview", "--secrets-file", file]))
+  withSecretsFile(values, (args) => run("wrangler", ["preview", ...args]))
 }
 
 /**
  * Migrate the remote database, then deploy. On the very first deploy the database doesn't exist yet,
  * so the deploy creates it (automatic provisioning) and the migration runs straight after.
- * Secrets are read from the environment (Workers Builds build secrets, or fnox) and uploaded with the deploy.
+ * Secrets set in the environment (Workers Builds build secrets) are uploaded with the deploy.
  */
 function ciDeploy(): void {
   const values = secretsFromEnv()
@@ -91,7 +87,7 @@ function ciDeploy(): void {
   const migrated = tryRun("wrangler", migrateRemote)
   if (!migrated) console.log("Database not migrated yet (first deploy?). Deploying first so wrangler can create it, then migrating.")
 
-  withSecretsFile(values, (file) => run("wrangler", ["deploy", "--secrets-file", file]))
+  withSecretsFile(values, (args) => run("wrangler", ["deploy", ...args]))
 
   if (!migrated) run("wrangler", migrateRemote)
 }
@@ -100,9 +96,6 @@ function ciDeploy(): void {
 
 interface Script { id: string; tag: string }
 interface BuildToken { build_token_uuid: string; build_token_name: string }
-interface EnvVar { is_secret: boolean; value: string | null }
-interface BuildSettings { deploy_command: string; build_command: string; environment_variables?: Record<string, EnvVar> }
-interface BuildConfig { previews_enabled: boolean; production_settings: BuildSettings; previews_base_config?: BuildSettings }
 interface Trigger { trigger_uuid: string; deploy_command: string }
 interface Preview { preview_id: string; branch: string }
 interface Build {
@@ -114,11 +107,6 @@ interface Build {
 }
 
 const log = (msg: string) => console.log(`  ${msg}`)
-
-async function scriptTag(name: string): Promise<string | null> {
-  const scripts = await cf<Script[]>("GET", "/accounts/:account/workers/scripts")
-  return scripts.find((s) => s.id === name)?.tag ?? null
-}
 
 async function requireTag(): Promise<string> {
   const tag = await scriptTag(workerName())
@@ -151,8 +139,11 @@ async function ensureBuildToken(name: string): Promise<string> {
   const existing = tokens.find((t) => t.build_token_name === tokenName)
   if (existing) return existing.build_token_uuid
   const { token } = credentials()
-  const verified = (await cfMaybe<{ id: string }>("GET", "/accounts/:account/tokens/verify"))
-    ?? (await cf<{ id: string }>("GET", "/user/tokens/verify"))
+  const verified = (await cfMaybe<{ id: string; expires_on?: string }>("GET", "/accounts/:account/tokens/verify"))
+    ?? (await cf<{ id: string; expires_on?: string }>("GET", "/user/tokens/verify"))
+  // A short-lived token (an agent's lease) would break every build once it expires.
+  if (verified.expires_on && Date.parse(verified.expires_on) < Date.now() + 30 * 86_400_000)
+    fail(`This Cloudflare token expires on ${verified.expires_on}, too soon to become the Workers Builds build token. Use your everyday token (npm run env:setup).`)
   const created = await cf<BuildToken>("POST", "/accounts/:account/builds/tokens", {
     build_token_name: tokenName, build_token_secret: token, cloudflare_token_id: verified.id,
   })
@@ -216,6 +207,16 @@ async function setup(opts: { rotateSecrets?: boolean }): Promise<void> {
     await cf("POST", `/accounts/:account/builds/workers/${tag}/migrate_to_previews`, { deploy_command: BUILD.previewCommand })
     log("turned on Previews")
   } else log("Previews are on")
+
+  // Previews deployed outside Workers Builds (worker:preview from a machine or a cloud session) take their secrets
+  // from the Previews base config. Each one is set once; an existing value is left alone unless rotating.
+  let base = ""
+  try { base = capture("wrangler", ["preview", "base-config", "secret", "list"]) } catch { /* no base config secrets yet */ }
+  for (const name of requiredSecrets()) {
+    if (base.includes(name) && !opts.rotateSecrets) continue
+    run("wrangler", ["preview", "base-config", "secret", "put", name], { input: randomSecret() })
+    log(`set ${name} in the Previews base config`)
+  }
 
   const sub = await subdomain()
   console.log(`\nDone. Production: https://${name}.${sub}.workers.dev (builds on push to ${BUILD.productionBranch})`)

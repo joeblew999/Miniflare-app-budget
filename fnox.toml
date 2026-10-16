@@ -12,10 +12,13 @@ type = "plain"
 # to deploy with it. Cloudflare gets random values from `npm run worker:setup`.
 BETTER_AUTH_SECRET = { description = "Better Auth secret (32+ random chars)", default = "local-dev-only-secret-do-not-deploy-0000" }
 
-# The CLI's Cloudflare commands (worker:setup, worker:build, worker:status, worker:logs,
-# worker:deploy, db:migrate --remote) run under this profile. Point these at your own
-# store in fnox.local.toml. The API token needs: Workers Scripts Edit, D1 Edit,
-# Workers Builds Configuration Edit, Account Settings Read.
+# Cloudflare: `npm run env:setup` fills these in for you (your own store, referenced from fnox.local.toml),
+# and asks for the token permissions it needs. A cloud session gets them from `npm run env:lease` instead.
 [profiles.production.secrets]
 CLOUDFLARE_ACCOUNT_ID = { description = "Cloudflare account ID", if_missing = "warn" }
-CLOUDFLARE_API_TOKEN = { description = "Cloudflare API token (see permissions above)", if_missing = "warn" }
+CLOUDFLARE_API_TOKEN = { description = "This machine's Cloudflare user token", if_missing = "warn" }
+
+# The parent token that makes agents' short-lived Cloudflare tokens. Only env setup reads it; it's kept out of
+# the production profile so wrangler never sees it.
+[profiles.mint.secrets]
+CLOUDFLARE_PARENT_TOKEN = { description = "Cloudflare account token that makes agents' tokens", if_missing = "ignore" }

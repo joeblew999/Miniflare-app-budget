@@ -1,8 +1,8 @@
-// Minimal Cloudflare REST client for the CLI (Workers, D1, Workers Builds).
-// Credentials come from the environment (fnox production profile):
-//   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
-// CLOUDFLARE_API_BASE overrides the endpoint (used by the CLI's own tests).
-import { fail } from "./run.ts"
+// Minimal Cloudflare REST client for the CLI (Workers, D1, Workers Builds, API tokens).
+// Credentials come from the environment: CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID, from fnox
+// (env setup on your machine, env lease in a cloud session) or from Workers Builds.
+// CLOUDFLARE_API_BASE overrides the endpoint.
+import { fail, run } from "./run.ts"
 
 const BASE = process.env.CLOUDFLARE_API_BASE ?? "https://api.cloudflare.com/client/v4"
 
@@ -26,13 +26,25 @@ export function credentials(): { token: string; accountId: string } {
   const token = process.env.CLOUDFLARE_API_TOKEN
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID
   if (!token || !accountId)
-    fail("No Cloudflare token for this machine. On your Mac: `npm run env:setup` stores one in fnox.")
+    fail("No Cloudflare token here. On your machine, `npm run env:setup` stores one in fnox; in a cloud session, `npm run env:lease` gets one.")
   return { token, accountId }
 }
 
-export async function cf<T>(method: string, path: string, body?: unknown, init: { raw?: string; contentType?: string; token?: string } = {}): Promise<T> {
-  // init.token checks a token that isn't stored yet (env setup); it only reaches paths without :account.
-  const { token, accountId } = init.token ? { token: init.token, accountId: "" } : credentials()
+/**
+ * Run fn with Cloudflare credentials in the environment. Without them, run this same command again under the fnox
+ * production profile, which has them. Workers Builds brings its own, so it never re-runs there.
+ */
+export function withCloudflare(fn: () => void | Promise<void>): void {
+  if (!process.env.CLOUDFLARE_API_TOKEN && !process.env.BUDGET_CLI_FNOX && !process.env.WORKERS_CI) {
+    run("node", [process.argv[1], ...process.argv.slice(2)], { secrets: { profile: "production" }, env: { BUDGET_CLI_FNOX: "1" } })
+    return
+  }
+  Promise.resolve().then(fn).catch((e: unknown) => fail(e instanceof Error ? e.message : String(e)))
+}
+
+/** init.token calls as a token that isn't in the environment (a new or parent token); init.account fills :account then. */
+export async function cf<T>(method: string, path: string, body?: unknown, init: { raw?: string; contentType?: string; token?: string; account?: string } = {}): Promise<T> {
+  const { token, accountId } = init.token ? { token: init.token, accountId: init.account ?? "" } : credentials()
   const url = BASE + path.replace(":account", accountId)
   const headers: Record<string, string> = { authorization: `Bearer ${token}` }
   let payload: string | undefined = init.raw
@@ -71,3 +83,28 @@ export function randomSecret(): string {
 }
 
 export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+// Workers Builds configuration, shared by worker setup and env push.
+export interface EnvVar { is_secret: boolean; value: string | null }
+export interface BuildSettings {
+  deploy_command: string
+  build_command: string
+  root_directory?: string
+  build_token_uuid?: string
+  build_caching_enabled?: boolean
+  environment_variables?: Record<string, EnvVar>
+}
+export interface BuildConfig { previews_enabled: boolean; production_settings: BuildSettings; previews_base_config?: BuildSettings }
+
+/** The Worker's tag (Workers Builds calls it external_script_id), or null if the Worker doesn't exist yet. */
+export async function scriptTag(name: string): Promise<string | null> {
+  const scripts = await cf<{ id: string; tag: string }[]>("GET", "/accounts/:account/workers/scripts")
+  return scripts.find((s) => s.id === name)?.tag ?? null
+}
+
+// API tokens (account-owned), used by env setup and env issue.
+export interface TokenPolicy { effect: string; resources: Record<string, unknown>; permission_groups: { id: string; name?: string }[] }
+export interface ApiToken { id: string; name: string; status?: string; expires_on?: string; policies: TokenPolicy[]; value?: string }
+
+/** Cloudflare wants RFC 3339 without milliseconds. */
+export const expiresIn = (ms: number) => new Date(Date.now() + ms).toISOString().replace(/\.\d+Z$/, "Z")

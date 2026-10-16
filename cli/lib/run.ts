@@ -33,7 +33,8 @@ function bin(name: string): string {
 
 function command(name: string, args: string[], opts: RunOptions): [string, string[]] {
   if (!opts.secrets) return [bin(name), args]
-  const profile = typeof opts.secrets === "object" ? ["--profile", opts.secrets.profile] : []
+  // A named profile gets only its own secrets (--no-defaults), so the dev defaults in fnox.toml never reach Cloudflare.
+  const profile = typeof opts.secrets === "object" ? ["--profile", opts.secrets.profile, "--no-defaults"] : []
   return ["fnox", ["exec", ...profile, "--", bin(name), ...args]]
 }
 

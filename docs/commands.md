@@ -16,9 +16,9 @@ Run with `npm run <goal>`. Wireit runs what each one needs first, in order, and 
 | `app:artifact -- [--no-check]` | `app:check` | Build the app and its Worker into one HTML file that runs with no server (dist/artifact/index.html, for a Claude artifact), then check it in a browser with the network blocked |
 | `app:smoke -- [--url <url>] [--offline]` |  | Smoke-test a running copy of the app over HTTP (production: read-only; Previews and local: full guest round trip) |
 | `app:verify` | `app:check`, `test:run`, `app:lint`, `docs:gen` | Runs app:check, test:run, app:lint, docs:gen |
-| `worker:deploy` | `app:verify`, `app:build` | Deploy the build in dist/ from your machine (credentials and secrets from your fnox production profile) |
+| `worker:deploy` | `app:verify`, `app:build` | Deploy the build in dist/ to production from your machine (credentials from your fnox production profile; the Worker keeps its secrets) |
 | `worker:ci` |  | Workers Builds' deploy command (after its app:build): migrate D1, then deploy with secrets from the environment |
-| `worker:preview` |  | Workers Builds' preview command (after its app:build), one Preview per branch: migrate the staging D1, then deploy a Preview |
+| `worker:preview` | `app:build` | Deploy this branch's Preview (Workers Builds' preview command, and how agents deploy): migrate the staging D1, then deploy a Preview |
 | `worker:setup -- [--rotate-secrets]` | `env:setup` | Create or update everything on Cloudflare: Worker, staging DB, Workers Builds, Previews, secrets (safe to re-run) |
 | `worker:build -- [--branch <branch>]` |  | Start a Workers Build, wait for it and print the URL (production by default) |
 | `worker:status` |  | Show the production and Preview URLs and the latest builds |
@@ -31,7 +31,11 @@ Run with `npm run <goal>`. Wireit runs what each one needs first, in order, and 
 | `theme:gen -- [--json-only]` |  | Regenerate src/styles/themes.css and themes.json from shadcn presets (~20s per theme) |
 | `env:list` |  | List the secrets declared in fnox.toml |
 | `env:check` |  | Check every secret has a value in your store |
-| `env:setup -- [--account <id>] [--provider <name>]` |  | Give this machine its Cloudflare access in fnox, the everyday token and account id: opens a pre-filled Cloudflare form for anything missing and picks the token up from the clipboard (safe to re-run) |
+| `env:setup -- [--account <id>] [--provider <name>] [--recheck] [--keep-other-tokens]` |  | Give this machine its Cloudflare access and agents theirs: your everyday token and account id in fnox, the parent token that makes agents' short-lived tokens, and what the mint workflow needs on GitHub. Never waits: if it needs you, it opens the pre-filled Cloudflare form, says what to do and stops; then run it again (safe to re-run) |
+| `env:push -- [--dry-run] [--only <name>]` |  | Copy the secrets listed in env.targets.jsonc from fnox to their targets: Worker secrets, Workers Builds variables, GitHub |
+| `env:status` |  | Show which secrets are where (names only), and warn about Cloudflare tokens that expire within 14 days |
+| `env:lease -- [--ttl <duration>]` |  | Cloud sessions: get a short-lived Cloudflare token from the GitHub mint workflow, with nothing pasted, and keep it in this session's fnox.local.toml |
+| `env:issue -- [--public-key <key>] [--ttl <duration>] [--out <file>]` |  | Run by the GitHub mint workflow: make a short-lived Cloudflare token (or take the fallback token) and encrypt it to a session's public key |
 
 ## Steps
 

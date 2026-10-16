@@ -27,7 +27,11 @@
     "theme:gen": "wireit",
     "env:list": "wireit",
     "env:check": "wireit",
-    "env:setup": "wireit"
+    "env:setup": "wireit",
+    "env:push": "wireit",
+    "env:status": "wireit",
+    "env:lease": "wireit",
+    "env:issue": "wireit"
   },
   "wireit": {
     "app:dev": {
@@ -62,6 +66,22 @@
       "command": "node cli/main.ts app build",
       "dependencies": [
         "app:check"
+      ],
+      "files": [
+        "src/**",
+        "shared/**",
+        "worker/**",
+        "public/**",
+        "index.html",
+        "vite.config.ts",
+        "tsconfig*.json",
+        "wrangler.jsonc",
+        "package.json",
+        "package-lock.json"
+      ],
+      "output": [
+        "dist/**",
+        "!dist/artifact/**"
       ]
     },
     "app:preview": {
@@ -125,7 +145,10 @@
       "command": "node cli/main.ts worker ci"
     },
     "worker:preview": {
-      "command": "node cli/main.ts worker preview"
+      "command": "node cli/main.ts worker preview",
+      "dependencies": [
+        "app:build"
+      ]
     },
     "worker:setup": {
       "command": "node cli/main.ts worker setup",
@@ -190,6 +213,18 @@
     },
     "env:setup": {
       "command": "node cli/main.ts env setup"
+    },
+    "env:push": {
+      "command": "node cli/main.ts env push"
+    },
+    "env:status": {
+      "command": "node cli/main.ts env status"
+    },
+    "env:lease": {
+      "command": "node cli/main.ts env lease"
+    },
+    "env:issue": {
+      "command": "node cli/main.ts env issue"
     },
     "docs:gen": {
       "command": "node cli/main.ts docs gen",
