@@ -86,6 +86,9 @@
     },
     "docs:gen": {
       "command": "node cli/main.ts docs gen",
+      "dependencies": [
+        "worker:types"
+      ],
       "files": [
         "package.json",
         "cli/**",

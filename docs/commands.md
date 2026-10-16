@@ -36,7 +36,7 @@ Only in the `wireit` section of `package.json`: they run as part of a goal.
 - `app:lint`: Lint with oxlint
 - `test:run` (after `worker:types`): Run all tests once
 - `db:migrate`: Apply pending migrations (local by default)
-- `docs:gen`: Write docs/commands.md from package.json and the CLI, and fail on any mention of a command that doesn't exist
+- `docs:gen` (after `worker:types`): Write docs/commands.md from package.json and the CLI, and fail on any mention of a command that doesn't exist
 
 ## Other commands
 
