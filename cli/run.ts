@@ -10,6 +10,13 @@ export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 /** The BETTER_AUTH_SECRET default in fnox.toml. Never allowed to reach Cloudflare. */
 export const DEV_SECRET = "local-dev-only-secret-do-not-deploy-0000"
 
+/** Print how long something took, to stderr. Set BUDGET_TIMINGS=0 to turn timings off. */
+export function logTiming(label: string, startedAt: number): void {
+  if (process.env.BUDGET_TIMINGS === "0") return
+  const s = (performance.now() - startedAt) / 1000
+  console.error(`⏱  ${label} ${s < 60 ? `${s.toFixed(1)}s` : `${Math.floor(s / 60)}m${Math.round(s % 60)}s`}`)
+}
+
 interface RunOptions {
   cwd?: string
   env?: Record<string, string>
@@ -33,12 +40,14 @@ function command(name: string, args: string[], opts: RunOptions): [string, strin
 /** Run a tool with inherited stdio. Exits the CLI with the tool's code if it fails. */
 export function run(name: string, args: string[] = [], opts: RunOptions = {}): void {
   const [cmd, argv] = command(name, args, opts)
+  const started = performance.now()
   const res = spawnSync(cmd, argv, {
     cwd: opts.cwd ?? root,
     stdio: opts.input === undefined ? "inherit" : ["pipe", "inherit", "inherit"],
     input: opts.input,
     env: { ...process.env, ...opts.env },
   })
+  logTiming(`  ${name}${args[0] && !args[0].startsWith("-") ? ` ${args[0]}` : ""}`, started)
   if (res.error) {
     console.error(`Could not run ${cmd}: ${res.error.message}`)
     process.exit(1)
@@ -49,7 +58,9 @@ export function run(name: string, args: string[] = [], opts: RunOptions = {}): v
 /** Run a tool with inherited stdio and report whether it succeeded, without exiting. */
 export function tryRun(name: string, args: string[] = [], opts: RunOptions = {}): boolean {
   const [cmd, argv] = command(name, args, opts)
+  const started = performance.now()
   const res = spawnSync(cmd, argv, { cwd: opts.cwd ?? root, stdio: "inherit", env: { ...process.env, ...opts.env } })
+  logTiming(`  ${name}${args[0] && !args[0].startsWith("-") ? ` ${args[0]}` : ""}`, started)
   return res.status === 0
 }
 
