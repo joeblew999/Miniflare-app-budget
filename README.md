@@ -23,32 +23,37 @@ TypeScript strict throughout. See [CLAUDE.md](CLAUDE.md) for the conventions.
 
 `mise.toml` holds tools only. The npm scripts are goals: run the one you want, and
 [Wireit](https://github.com/google/wireit) runs whatever it needs first, skipping anything already up to date.
-There's no order to remember. The commands themselves are a TypeScript CLI in `cli/`. Secrets and env vars are declared in `fnox.toml`; the dev defaults there are
-enough to run locally. For Cloudflare, set your own values in `fnox.local.toml` (gitignored) under
+There's no order to remember. The commands themselves are a TypeScript CLI in `cli/`.
+
+Secrets and env vars are declared in `fnox.toml`; the dev defaults there are enough to run locally. For Cloudflare, set your own values in `fnox.local.toml` (gitignored) under
 `[profiles.production]`: `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `BETTER_AUTH_SECRET`.
 
 ## Commands
 
-    npm run app:dev             # app + Worker with hot reload, http://localhost:5173
-    npm run app:verify          # type-check, tests and lint: run before pushing
-    npm run app:artifact        # app + Worker in one HTML file with no server (Claude artifact), checked in a browser
-    npm run app:smoke -- --url <url>  # check a running copy (production: read-only; Preview/local: guest round trip)
-    npm run app:smoke -- --url <url> --offline  # plus offline use in a browser (Preview or app:preview)
-    npm run app:preview         # the production build, locally, http://localhost:4173
-    npm run app:build           # build to dist/
-    npm run worker:setup        # one-time Cloudflare setup (safe to re-run)
-    npm run worker:build        # start a build and wait (-- --branch xyz for a Preview)
-    npm run worker:status       # URLs and recent builds
-    npm run worker:logs         # a build's log
-    npm run worker:deploy       # verify, build and deploy from your machine (fnox production profile)
-    npm run worker:ci           # deploy step used by Cloudflare Workers Builds
-    npm run worker:preview      # Preview step used by Workers Builds (staging DB, guest sign-in)
-    npm run db:gen -- NAME      # write a migration after changing worker/db/schema.ts
-    npm run ui:add -- dialog    # add shadcn components
-    npm run theme:set -- CODE   # switch base preset (build codes at ui.shadcn.com/create) and regenerate themes
+<!-- generated:commands (npm run app:verify writes this; edit package.json or cli/ instead) -->
+```
+npm run app:setup                    # Set up this machine: install the VS Code extensions in .vscode/extensions.json and a browser for the checks (safe to re-run)
+npm run app:dev                      # Dev server with hot reload; the Worker runs in workerd (http://localhost:5173)
+npm run app:verify                   # Runs app:check, test:run, app:lint, docs:gen
+npm run app:artifact -- [--no-check] # Build the app and its Worker into one HTML file that runs with no server (dist/artifact/index.html, for a Claude artifact), then check it in a browser with the network blocked
+npm run app:smoke -- [--url <url>] [--offline] # Smoke-test a running copy of the app over HTTP (production: read-only; Previews and local: full guest round trip)
+npm run app:preview                  # Run the production build (dist/) in workerd (http://localhost:4173)
+npm run app:build                    # Build the app and Worker to dist/
+npm run worker:ci                    # Workers Builds' deploy command (after its app:build): migrate D1, then deploy with secrets from the environment
+npm run worker:preview               # Workers Builds' preview command (after its app:build), one Preview per branch: migrate the staging D1, then deploy a Preview
+npm run worker:deploy                # Deploy the build in dist/ from your machine (credentials and secrets from your fnox production profile)
+npm run worker:setup -- [--rotate-secrets] # Create or update everything on Cloudflare: Worker, staging DB, Workers Builds, Previews, secrets (safe to re-run)
+npm run worker:build -- [--branch <branch>] # Start a Workers Build, wait for it and print the URL (production by default)
+npm run worker:status                # Show the production and Preview URLs and the latest builds
+npm run worker:logs -- [build-uuid]  # Print a build's log (the latest build by default)
+npm run db:gen -- <name>             # Write a SQL migration for changes to worker/db/schema.ts
+npm run ui:add -- <components...>    # Add shadcn components, e.g. ui add dialog sheet
+npm run theme:set -- <code>          # Switch the base preset (build codes at ui.shadcn.com/create), then regenerate the accent themes from it
+```
 
-Single steps, without what they depend on: `npm run cli -- <noun> <verb>`, e.g. `npm run cli -- test watch`,
-`npm run cli -- env check`, `npm run cli -- db migrate --remote`. `npm run cli -- --help` lists them all.
+Single steps or other commands, without what they depend on: `npm run cli -- <noun> <verb>`,
+e.g. `npm run cli -- test watch`, `npm run cli -- theme show`, `npm run cli -- theme gen`. `npm run cli -- --help` lists them all.
+<!-- /generated:commands -->
 
 ## API
 

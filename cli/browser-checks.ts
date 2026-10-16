@@ -10,12 +10,12 @@ import { chromium, type Browser, type Page } from "playwright-core"
 
 async function launch(): Promise<Browser> {
   try {
-    return await chromium.launch() // Playwright's own Chromium (PLAYWRIGHT_BROWSERS_PATH, or `npx playwright-core install chromium`)
+    return await chromium.launch() // Playwright's own Chromium (PLAYWRIGHT_BROWSERS_PATH, or `npm run app:setup`)
   } catch {
     try {
       return await chromium.launch({ channel: "chrome" }) // fall back to installed Google Chrome
     } catch {
-      throw new Error("No browser found. Run `npx playwright-core install chromium` once, or install Google Chrome.")
+      throw new Error("No browser found. Run `npm run app:setup` once, or install Google Chrome.")
     }
   }
 }
