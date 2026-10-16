@@ -29,9 +29,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: jdx/mise-action@v2
-      - uses: actions/cache@v4
+      - uses: actions/checkout@v7
+      - uses: jdx/mise-action@v5
+      - uses: actions/cache@v6
         with:
           path: ~/.npm
           key: npm-${{ hashFiles('package-lock.json') }}
@@ -45,7 +45,7 @@ jobs:
           CLOUDFLARE_LEASE_SOURCE: ${{ vars.CLOUDFLARE_LEASE_SOURCE }}
           CLOUDFLARE_PARENT_TOKEN: ${{ secrets.CLOUDFLARE_PARENT_TOKEN }}
           CLOUDFLARE_AGENT_TOKEN: ${{ secrets.CLOUDFLARE_AGENT_TOKEN }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: lease
           path: lease.json

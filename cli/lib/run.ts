@@ -23,6 +23,8 @@ interface RunOptions {
   /** Run through `fnox exec` so the command sees the project's secrets. */
   secrets?: boolean | { profile: string }
   input?: string
+  /** false: don't print this tool's own timing (the caller prints one). */
+  timing?: boolean
 }
 
 /** Resolve a tool: a local node_modules/.bin entry if there is one, otherwise PATH (e.g. fnox from mise). */
@@ -48,7 +50,7 @@ export function run(name: string, args: string[] = [], opts: RunOptions = {}): v
     input: opts.input,
     env: { ...process.env, ...opts.env },
   })
-  logTiming(`  ${name}${args[0] && !args[0].startsWith("-") ? ` ${args[0]}` : ""}`, started)
+  if (opts.timing !== false) logTiming(`  ${name}${args[0] && !args[0].startsWith("-") ? ` ${args[0]}` : ""}`, started)
   if (res.error) {
     console.error(`Could not run ${cmd}: ${res.error.message}`)
     process.exit(1)

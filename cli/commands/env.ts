@@ -480,7 +480,10 @@ async function lease(opts: { ttl: string }): Promise<void> {
   const slug = await repo()
   run("gh", ["workflow", "run", WORKFLOW, "--repo", slug, "--ref", "main", "-f", `public_key=${key}`, "-f", `request_id=${id}`, "-f", `ttl=${opts.ttl}`])
   const runId = await findRun(slug, id)
-  run("gh", ["run", "watch", runId, "--repo", slug, "--exit-status", "--interval", "3"])
+  // Quiet: outside a terminal, gh run watch prints the whole run on every refresh.
+  console.log("Waiting for the mint workflow...")
+  if (!tryRun("gh", ["run", "watch", runId, "--repo", slug, "--exit-status", "--interval", "3"], { quiet: true }))
+    fail(`The mint workflow failed: https://github.com/${slug}/actions/runs/${runId}`)
   const got = unseal(privateKey, sealedFrom(slug, runId))
   writeFileSync(file, [
     LEASE_MARK,
