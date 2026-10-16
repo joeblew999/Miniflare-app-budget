@@ -3,7 +3,7 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 
-/* Theme: shadcn preset b2oDXH5AO (base neutral, theme green, charts green). Change with: npm run theme:set -- CODE, then npm run theme:gen */
+/* Theme: shadcn preset b2oDXH5AO (base neutral, theme green, charts green). Change with: npm run theme:set -- CODE (regenerates the accent themes too) */
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

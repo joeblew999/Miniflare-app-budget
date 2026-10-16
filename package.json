@@ -10,6 +10,7 @@
     "app:verify": "wireit",
     "app:artifact": "wireit",
     "app:smoke": "wireit",
+    "app:preview": "wireit",
     "app:build": "wireit",
     "worker:ci": "wireit",
     "worker:preview": "wireit",
@@ -18,7 +19,6 @@
     "worker:build": "wireit",
     "worker:status": "wireit",
     "worker:logs": "wireit",
-    "app:preview": "wireit",
     "db:gen": "wireit",
     "ui:add": "wireit",
     "theme:set": "wireit"
@@ -84,6 +84,26 @@
     "db:migrate": {
       "command": "node cli/main.ts db migrate"
     },
+    "docs:gen": {
+      "command": "node cli/main.ts docs gen",
+      "files": [
+        "package.json",
+        "cli/**",
+        "**/*.md",
+        "src/**",
+        "shared/**",
+        "worker/**",
+        "artifact/**",
+        "*.ts",
+        "*.html",
+        "*.jsonc",
+        "*.toml",
+        "!plans/**",
+        "!node_modules/**",
+        "!dist/**"
+      ],
+      "output": []
+    },
     "app:setup": {
       "command": "node cli/main.ts app setup"
     },
@@ -98,7 +118,8 @@
       "dependencies": [
         "app:check",
         "test:run",
-        "app:lint"
+        "app:lint",
+        "docs:gen"
       ]
     },
     "app:artifact": {

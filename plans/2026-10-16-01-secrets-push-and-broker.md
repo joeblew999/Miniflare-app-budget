@@ -122,7 +122,7 @@ Acceptance:
 1. Part 1 (`env:push`, `env:status`, `env.targets.jsonc`), on the Mac with real fnox secrets.
 2. Create the Cloudflare parent token, store it in fnox, and push it with `env:push` to GitHub Actions.
 3. Part 2 (workflow plus `env:lease`). Test from a cloud session.
-4. Update `CLAUDE.md`: how agents get Cloudflare access (run `env:lease`, never ask for tokens), plus the new commands in the `noun:verb` table and the README.
+4. Update `CLAUDE.md`: how agents get Cloudflare access (run `env:lease`, never ask for tokens). Add the new commands as goals in `package.json` (scripts plus Wireit); the command tables in the docs are generated from them.
 
 ## Later: reuse across repos
 

@@ -17,10 +17,10 @@ export function register(program: Command): void {
   worker.command("deploy").description("Deploy the build in dist/ from your machine (credentials and secrets from your fnox production profile)")
     .action(() => run("node", ["cli/main.ts", "worker", "ci"], { secrets: { profile: "production" } }))
 
-  worker.command("ci").description("Deploy step for Cloudflare Workers Builds: migrate D1, then deploy with secrets from the environment. Run after app build.")
+  worker.command("ci").description("Workers Builds' deploy command (after its app:build): migrate D1, then deploy with secrets from the environment")
     .action(ciDeploy)
 
-  worker.command("preview").description("Preview step for Workers Builds (one Preview per branch): migrate the staging D1, then deploy a Preview. Run after app build.")
+  worker.command("preview").description("Workers Builds' preview command (after its app:build), one Preview per branch: migrate the staging D1, then deploy a Preview")
     .action(previewDeploy)
 
   worker.command("setup").description("Create or update everything on Cloudflare: Worker, staging DB, Workers Builds, Previews, secrets (safe to re-run)")
