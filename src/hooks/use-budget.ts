@@ -1,7 +1,7 @@
 // Loads the signed-in user's budget and saves edits back, and keeps working offline:
 //   - the last copy from the server is shown straight away, so the budget opens with no connection;
 //   - every edit is kept on this device first (the outbox), then sent when there's a connection;
-//   - when the server has a save newer than the edit on this device (another device), the latest one wins.
+//   - the latest edit wins: the server refuses an edit older than its saved budget, and the app then loads that one.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { onlineManager, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type DraftBudget, toBudget } from "@shared/budget"
@@ -68,7 +68,7 @@ export function useBudget(userId: string) {
     timer.current = setTimeout(() => flushRef.current(), DEBOUNCE_MS)
   }, [userId])
 
-  // Fetch the server's copy, then decide whether it or the edit on this device is the latest.
+  // Fetch the server's copy. If this device has an unsent edit, send that instead and keep showing it.
   // Offline, this waits (TanStack Query pauses it) and runs when the connection is back.
   const query = useQuery({
     queryKey,
@@ -87,11 +87,12 @@ export function useBudget(userId: string) {
         const legacy = loadLocalBudget() // first sign-in: bring over a budget kept by the old browser-only version
         if (legacy) { forgetLocalBudget(); const loaded = showing(legacy); save(legacy); return loaded }
       }
-      if (pending && (!data.savedAt || pending.editedAt > data.savedAt)) { // this device's edit is newer: send it
+      if (pending) {
+        // Unsent edit on this device: send it. The server decides which is newer; if it refuses the edit
+        // (a later save from another device), flush reloads the server's copy.
         flushRef.current()
         return { budget: pending.budget, version }
       }
-      if (pending) outbox.clear(userId) // the server has a newer save (another device)
       serverCopy.save(userId, { budget: data.budget, savedAt: data.savedAt })
       setState("saved")
       return showing(data.budget)
