@@ -2,6 +2,19 @@
 
 **Status:** planned. To be built on the Mac (it needs the real secrets in fnox).
 
+## How we work on this (Mac and cloud agent)
+
+- **Branch:** `secrets-push`, created from the latest `main`:
+  ```
+  git checkout main && git pull
+  git checkout -b secrets-push
+  ```
+- Never commit to `main` directly. Merging to `main` deploys production.
+- Push the branch whenever you like. Every push gets its own Preview URL. When it's done, open a PR into `main` and merge it.
+- **Sync goes through GitHub.** Whoever wants the other's work pulls the branch: `git fetch && git checkout secrets-push && git pull`.
+- **One writer per branch at a time.** While the Mac is working on `secrets-push`, the cloud agent stays off it, or works on its own branch (for example `secrets-push-agent`) and opens a PR **into `secrets-push`**, not into `main`.
+- To hand over, push first and then say which branch to pick up.
+
 ## Problem
 
 Every secret lives in fnox on the Mac, which is the only source of truth. Three other places need some of them and can't reach the Mac:
