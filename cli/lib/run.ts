@@ -4,8 +4,8 @@ import { existsSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
-/** Repo root (the folder above cli/). */
-export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
+/** Repo root (two folders above this file, cli/lib/). */
+export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 
 /** The BETTER_AUTH_SECRET default in fnox.toml. Never allowed to reach Cloudflare. */
 export const DEV_SECRET = "local-dev-only-secret-do-not-deploy-0000"
@@ -33,7 +33,8 @@ function bin(name: string): string {
 
 function command(name: string, args: string[], opts: RunOptions): [string, string[]] {
   if (!opts.secrets) return [bin(name), args]
-  const profile = typeof opts.secrets === "object" ? ["--profile", opts.secrets.profile] : []
+  // A named profile gets only its own secrets (--no-defaults), so the dev defaults in fnox.toml never reach Cloudflare.
+  const profile = typeof opts.secrets === "object" ? ["--profile", opts.secrets.profile, "--no-defaults"] : []
   return ["fnox", ["exec", ...profile, "--", bin(name), ...args]]
 }
 

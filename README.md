@@ -8,86 +8,22 @@ Example Google drive like app that will be able to run on Cloudflare using mitig
 
 Income and expenses in THB or AUD, any frequency, with shared tags. Every total shows both currencies.
 Sign in and your budget is saved to your account, so it's the same on every device.
-The AUD/THB exchange rate is live (the European Central Bank's daily rate). It works offline too: edits are kept on the device and sync when you're back online (the latest edit wins).
+The AUD/THB exchange rate is live (the European Central Bank's daily rate). It works offline too: edits are kept on the
+device and sync when you're back online (the latest edit wins).
 
-**Stack:** contract-first API with oRPC v2 (beta) and Zod 4 · Cloudflare Worker + D1 (Drizzle) ·
-Better Auth · React 19 + Vite + Tailwind v4 + shadcn/ui · TanStack Query · Vitest in workerd.
-TypeScript strict throughout. See [CLAUDE.md](CLAUDE.md) for the conventions.
+- Production: https://baht-dollar-budget.gedw99.workers.dev, built from `main`. Every other branch gets its own Preview
+  on a staging database; sign in there with **Continue as guest**.
+- The API is defined once, in `shared/contract.ts`, and served as RPC (`/api/rpc`) and REST (`/api/*`), with interactive
+  docs at `/api/docs`.
 
-## Setup
+## Start
 
-    mise install          # tools from mise.toml (node 24, fnox)
+    mise install          # tools from mise.toml
     npm install
-    npm run app:setup     # VS Code extensions (Wireit) and a browser for the checks
+    npm run app:setup     # editor extensions and a browser for the checks
     npm run app:dev       # http://localhost:5173
 
-`mise.toml` holds tools only. The npm scripts are goals: run the one you want, and
-[Wireit](https://github.com/google/wireit) runs whatever it needs first, skipping anything already up to date.
-There's no order to remember. The commands themselves are a TypeScript CLI in `cli/`.
+For Cloudflare, `npm run worker:setup` gives your machine its access (it opens the Cloudflare forms it needs) and sets up
+everything on Cloudflare. After that, deploying is a git push.
 
-Secrets and env vars are declared in `fnox.toml`; the dev defaults there are enough to run locally. For Cloudflare, set your own values in `fnox.local.toml` (gitignored) under
-`[profiles.production]`: `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `BETTER_AUTH_SECRET`.
-
-## Commands
-
-Run a goal with `npm run <goal>`, e.g. `npm run app:dev` or `npm run app:verify`. Wireit runs whatever it needs
-first, so there's no order to remember. **Every command is listed in [docs/commands.md](docs/commands.md)**, which is
-generated from the CLI, so it's always current.
-
-## API
-
-The API is defined once, in `shared/contract.ts`, and served by the Worker in two forms:
-
-- `/api/rpc/*`: oRPC's RPC protocol, used by the React app through a client typed from the contract
-- `/api/*`: the same procedures as REST: `GET /api/rate`, `GET /api/me`, `GET /api/budget`, `PUT /api/budget`
-- `/api/docs`: interactive API docs (Scalar); `/api/spec.json` is the OpenAPI 3.2 document
-- `/api/auth/*`: Better Auth (sign up, sign in, sign out, session)
-
-## Live
-
-- Production: https://baht-dollar-budget.gedw99.workers.dev (built from `main`)
-- Previews: every other branch gets its own Preview URL, using a staging database. Sign in with
-  **Continue as guest**, which is only offered in Previews and local dev.
-
-## Deploy (Cloudflare Workers Builds)
-
-Deploying is a git push. Pushing to `main` deploys production, and pushing any other branch deploys that branch's Preview.
-
-One-time setup, from this repo:
-
-1. In `fnox.local.toml`, under `[profiles.production]`, set `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`.
-   The token needs Workers Scripts Edit, D1 Edit, Workers Builds Configuration Edit and Account Settings Read.
-2. `npm run worker:setup`. It creates the Worker, the staging database, the Workers Builds connection to this repo,
-   Previews and the secrets. Commit any ids it writes into `wrangler.jsonc`.
-
-After that:
-
-    npm run worker:status                 # URLs and recent builds
-    npm run worker:build                  # build production now and wait
-    npm run worker:build -- --branch xyz  # build a branch's Preview now and wait
-    npm run worker:logs                   # latest build log
-
-## Layout
-
-    cli/       project CLI (TypeScript)
-    shared/    contract, Zod schemas, budget maths (used by app and Worker)
-    worker/    Worker: routing, oRPC router, auth, D1 access, tests
-    migrations/ SQL migrations for D1
-    src/       React app: components/, components/ui/ (shadcn), hooks/, lib/, styles/
-
-## Theme
-
-The base theme is official shadcn preset **`b2oDXH5AO`** (base neutral, theme green, charts green):
-https://ui.shadcn.com/create?preset=b2oDXH5AO
-
-In the app, the header switcher changes **light / dark / system** and the **accent colour**, from the 18
-official shadcn themes. Choices are saved per browser.
-
-- `src/styles/themes.css` / `themes.json` are generated by `npm run theme:set` (or `npm run cli -- theme gen`), which runs
-  `shadcn init --preset` once per theme and extracts the CSS variables. Don't hand-edit them.
-- Change the base with `npm run theme:set -- CODE`; the accent themes regenerate from it.
-
-## Moving from the browser-only version
-
-Budgets saved by the earlier browser-only version are imported into your account the first time you
-sign in on that browser.
+Every command is in [docs/commands.md](docs/commands.md). How to work in this repo is in [CLAUDE.md](CLAUDE.md).

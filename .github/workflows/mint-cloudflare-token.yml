@@ -1,0 +1,52 @@
+# Gives a cloud agent session a short-lived Cloudflare token: started by `npm run env:lease` in that session.
+# The token is encrypted to the session's one-off public key, so only that session can read it.
+# What it reads (CLOUDFLARE_* secrets and variables) is put on GitHub by `npm run env:setup` on the owner's machine.
+name: mint-cloudflare-token
+run-name: mint ${{ inputs.request_id }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      public_key:
+        description: The session's X25519 public key (SPKI DER, base64)
+        required: true
+        type: string
+      request_id:
+        description: Random id, so the session finds its own run
+        required: true
+        type: string
+      ttl:
+        description: How long the token lasts (at most 4h)
+        required: false
+        default: 4h
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  issue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ hashFiles('package-lock.json') }}
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      # Inputs go through env, never straight into the script.
+      - run: npm run env:issue -- --public-key "$PUBLIC_KEY" --ttl "$TTL" --out lease.json
+        env:
+          PUBLIC_KEY: ${{ inputs.public_key }}
+          TTL: ${{ inputs.ttl }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_LEASE_SOURCE: ${{ vars.CLOUDFLARE_LEASE_SOURCE }}
+          CLOUDFLARE_PARENT_TOKEN: ${{ secrets.CLOUDFLARE_PARENT_TOKEN }}
+          CLOUDFLARE_AGENT_TOKEN: ${{ secrets.CLOUDFLARE_AGENT_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lease
+          path: lease.json
+          retention-days: 1

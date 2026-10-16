@@ -1,5 +1,5 @@
 import type { Command } from "commander"
-import { run } from "../run.ts"
+import { run } from "../lib/run.ts"
 
 export function register(program: Command): void {
   const ui = program.command("ui").description("shadcn components in src/components/ui/")

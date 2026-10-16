@@ -1,5 +1,5 @@
 import type { Command } from "commander"
-import { run } from "../run.ts"
+import { run } from "../lib/run.ts"
 
 /** Secrets from fnox reach the Worker under test the same way as in app:dev. */
 const opts = { secrets: true, env: { CLOUDFLARE_INCLUDE_PROCESS_ENV: "true" } }

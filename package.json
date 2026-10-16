@@ -5,32 +5,40 @@
   "type": "module",
   "scripts": {
     "cli": "node cli/main.ts",
-    "app:setup": "wireit",
     "app:dev": "wireit",
-    "app:verify": "wireit",
+    "app:build": "wireit",
+    "app:preview": "wireit",
+    "app:setup": "wireit",
     "app:artifact": "wireit",
     "app:smoke": "wireit",
-    "app:preview": "wireit",
-    "app:build": "wireit",
+    "app:verify": "wireit",
+    "worker:deploy": "wireit",
     "worker:ci": "wireit",
     "worker:preview": "wireit",
-    "worker:deploy": "wireit",
     "worker:setup": "wireit",
     "worker:build": "wireit",
     "worker:status": "wireit",
     "worker:logs": "wireit",
     "db:gen": "wireit",
+    "test:watch": "wireit",
     "ui:add": "wireit",
-    "theme:set": "wireit"
+    "theme:show": "wireit",
+    "theme:set": "wireit",
+    "theme:gen": "wireit",
+    "env:list": "wireit",
+    "env:check": "wireit",
+    "env:setup": "wireit",
+    "env:push": "wireit",
+    "env:status": "wireit",
+    "env:lease": "wireit",
+    "env:issue": "wireit"
   },
   "wireit": {
-    "worker:types": {
-      "command": "node cli/main.ts worker types",
-      "files": [
-        "wrangler.jsonc"
-      ],
-      "output": [
-        "worker-configuration.d.ts"
+    "app:dev": {
+      "command": "node cli/main.ts app dev",
+      "service": true,
+      "dependencies": [
+        "db:migrate"
       ]
     },
     "app:check": {
@@ -54,6 +62,36 @@
       ],
       "output": []
     },
+    "app:build": {
+      "command": "node cli/main.ts app build",
+      "dependencies": [
+        "app:check"
+      ],
+      "files": [
+        "src/**",
+        "shared/**",
+        "worker/**",
+        "public/**",
+        "index.html",
+        "vite.config.ts",
+        "tsconfig*.json",
+        "wrangler.jsonc",
+        "package.json",
+        "package-lock.json"
+      ],
+      "output": [
+        "dist/**",
+        "!dist/artifact/**"
+      ]
+    },
+    "app:preview": {
+      "command": "node cli/main.ts app preview",
+      "service": true,
+      "dependencies": [
+        "app:build",
+        "db:migrate"
+      ]
+    },
     "app:lint": {
       "command": "node cli/main.ts app lint",
       "files": [
@@ -62,9 +100,76 @@
         "worker/**",
         "cli/**",
         "artifact/**",
-        ".oxlintrc.json"
+        ".oxlintrc.json",
+        "package.json"
       ],
       "output": []
+    },
+    "app:setup": {
+      "command": "node cli/main.ts app setup"
+    },
+    "app:artifact": {
+      "command": "node cli/main.ts app artifact",
+      "dependencies": [
+        "app:check"
+      ]
+    },
+    "app:smoke": {
+      "command": "node cli/main.ts app smoke"
+    },
+    "app:verify": {
+      "dependencies": [
+        "app:check",
+        "test:run",
+        "app:lint",
+        "docs:gen"
+      ]
+    },
+    "worker:types": {
+      "command": "node cli/main.ts worker types",
+      "files": [
+        "wrangler.jsonc"
+      ],
+      "output": [
+        "worker-configuration.d.ts"
+      ]
+    },
+    "worker:deploy": {
+      "command": "node cli/main.ts worker deploy",
+      "dependencies": [
+        "app:verify",
+        "app:build"
+      ]
+    },
+    "worker:ci": {
+      "command": "node cli/main.ts worker ci"
+    },
+    "worker:preview": {
+      "command": "node cli/main.ts worker preview",
+      "dependencies": [
+        "app:build"
+      ]
+    },
+    "worker:setup": {
+      "command": "node cli/main.ts worker setup",
+      "dependencies": [
+        "env:setup"
+      ]
+    },
+    "worker:build": {
+      "command": "node cli/main.ts worker build"
+    },
+    "worker:status": {
+      "command": "node cli/main.ts worker status"
+    },
+    "worker:logs": {
+      "command": "node cli/main.ts worker logs"
+    },
+    "db:gen": {
+      "command": "node cli/main.ts db gen"
+    },
+    "db:migrate": {
+      "command": "node cli/main.ts db migrate"
     },
     "test:run": {
       "command": "node cli/main.ts test run",
@@ -81,11 +186,51 @@
       ],
       "output": []
     },
-    "db:migrate": {
-      "command": "node cli/main.ts db migrate"
+    "test:watch": {
+      "command": "node cli/main.ts test watch",
+      "service": true,
+      "dependencies": [
+        "worker:types"
+      ]
+    },
+    "ui:add": {
+      "command": "node cli/main.ts ui add"
+    },
+    "theme:show": {
+      "command": "node cli/main.ts theme show"
+    },
+    "theme:set": {
+      "command": "node cli/main.ts theme set"
+    },
+    "theme:gen": {
+      "command": "node cli/main.ts theme gen"
+    },
+    "env:list": {
+      "command": "node cli/main.ts env list"
+    },
+    "env:check": {
+      "command": "node cli/main.ts env check"
+    },
+    "env:setup": {
+      "command": "node cli/main.ts env setup"
+    },
+    "env:push": {
+      "command": "node cli/main.ts env push"
+    },
+    "env:status": {
+      "command": "node cli/main.ts env status"
+    },
+    "env:lease": {
+      "command": "node cli/main.ts env lease"
+    },
+    "env:issue": {
+      "command": "node cli/main.ts env issue"
     },
     "docs:gen": {
       "command": "node cli/main.ts docs gen",
+      "dependencies": [
+        "worker:types"
+      ],
       "files": [
         "package.json",
         "cli/**",
@@ -106,81 +251,6 @@
       "output": [
         "docs/commands.md"
       ]
-    },
-    "app:setup": {
-      "command": "node cli/main.ts app setup"
-    },
-    "app:dev": {
-      "command": "node cli/main.ts app dev",
-      "service": true,
-      "dependencies": [
-        "db:migrate"
-      ]
-    },
-    "app:verify": {
-      "dependencies": [
-        "app:check",
-        "test:run",
-        "app:lint",
-        "docs:gen"
-      ]
-    },
-    "app:artifact": {
-      "command": "node cli/main.ts app artifact",
-      "dependencies": [
-        "app:check"
-      ]
-    },
-    "app:smoke": {
-      "command": "node cli/main.ts app smoke"
-    },
-    "app:build": {
-      "command": "node cli/main.ts app build",
-      "dependencies": [
-        "app:check"
-      ]
-    },
-    "app:preview": {
-      "command": "node cli/main.ts app preview",
-      "service": true,
-      "dependencies": [
-        "app:build",
-        "db:migrate"
-      ]
-    },
-    "worker:ci": {
-      "command": "node cli/main.ts worker ci"
-    },
-    "worker:preview": {
-      "command": "node cli/main.ts worker preview"
-    },
-    "worker:deploy": {
-      "command": "node cli/main.ts worker deploy",
-      "dependencies": [
-        "app:verify",
-        "app:build"
-      ]
-    },
-    "worker:setup": {
-      "command": "node cli/main.ts worker setup"
-    },
-    "worker:build": {
-      "command": "node cli/main.ts worker build"
-    },
-    "worker:status": {
-      "command": "node cli/main.ts worker status"
-    },
-    "worker:logs": {
-      "command": "node cli/main.ts worker logs"
-    },
-    "db:gen": {
-      "command": "node cli/main.ts db gen"
-    },
-    "ui:add": {
-      "command": "node cli/main.ts ui add"
-    },
-    "theme:set": {
-      "command": "node cli/main.ts theme set"
     }
   },
   "dependencies": {
