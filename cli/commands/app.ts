@@ -4,6 +4,7 @@ import path from "node:path"
 import { root, run } from "../run.ts"
 import { migrateLocal } from "./db.ts"
 import { smoke } from "../smoke.ts"
+import { checkArtifact } from "../artifact-check.ts"
 
 /** Lets wrangler hand the secrets fnox put in the environment to the Worker in local dev. */
 const workerEnv = { CLOUDFLARE_INCLUDE_PROCESS_ENV: "true" }
@@ -26,8 +27,12 @@ export function register(program: Command): void {
   app.command("lint").description("Lint with oxlint")
     .action(() => run("oxlint"))
 
-  app.command("artifact").description("Build the app and its Worker into one self-contained HTML file (dist/artifact/index.html) that runs with no server, for a Claude artifact")
-    .action(artifact)
+  app.command("artifact").description("Build the app and its Worker into one HTML file that runs with no server (dist/artifact/index.html, for a Claude artifact), then check it in a browser with the network blocked")
+    .option("--no-check", "build only, skip the browser check")
+    .action(async (opts: { check: boolean }) => {
+      const file = artifact()
+      if (opts.check && !(await checkArtifact(file))) process.exit(1)
+    })
 
   app.command("smoke").description("Smoke-test a running copy of the app over HTTP (production: read-only; Previews and local: full guest round trip)")
     .option("--url <url>", "base URL of the app", "http://localhost:5173")
@@ -44,11 +49,14 @@ export function build(): void {
 }
 
 /** Same app, same Worker, one HTML file: artifact/in-page-worker.ts answers /api/* inside the page. */
-export function artifact(): void {
+export function artifact(): string {
   check()
   run("vite", ["build", "--config", "vite.artifact.config.ts"])
   // Bundled libraries contain a literal U+FFFD inside template strings; write it as an escape so the file is clean text.
   const file = path.join(root, "dist/artifact/index.html")
-  writeFileSync(file, readFileSync(file, "utf8").replaceAll("\uFFFD", "\\uFFFD"))
+  // and drop the favicon link: an artifact can't load other files, so it would only be a failed request.
+  const html = readFileSync(file, "utf8").replaceAll("\uFFFD", "\\uFFFD").replace(/\s*<link rel="icon"[^>]*>/, "")
+  writeFileSync(file, html)
   console.log(`Built ${path.relative(root, file)}`)
+  return file
 }

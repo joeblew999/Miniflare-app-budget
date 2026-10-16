@@ -56,7 +56,7 @@ Rules:
 
 ```
 artifact/       glue for `app:artifact`: an oRPC link that calls the router in the page, D1 on sql.js, a cookie jar for Better Auth. No app logic
-cli/            project CLI: main.ts, run.ts, commands/<noun>.ts; smoke.ts (HTTP checks of a running app); cloudflare.ts (REST client), cloud.ts (setup/build/status/logs), project.ts (reads wrangler.jsonc, git remote)
+cli/            project CLI: main.ts, run.ts, commands/<noun>.ts; smoke.ts (HTTP checks of a running app); artifact-check.ts (browser check of the artifact build); cloudflare.ts (REST client), cloud.ts (setup/build/status/logs), project.ts (reads wrangler.jsonc, git remote)
 shared/         runtime-neutral code used by both src/ and worker/
   schema.ts         Zod schemas: the shape of a budget (types are inferred from these)
   contract.ts       oRPC contract: procedures, inputs, outputs, errors, REST routes
@@ -119,7 +119,7 @@ Production deploys come from **Cloudflare Workers Builds**: Cloudflare builds th
 
 ## Showing the app in a Claude artifact
 
-An artifact can't reach any server (local or Cloudflare), so `npm run app:artifact` builds the real app **and the real Worker** into one HTML file, `dist/artifact/index.html`. The build swaps one file, `src/lib/link.ts` (an `RPCLink` to `/api/rpc`), for `artifact/link.ts`, which calls the real router in the page with `createRouterClient` and the same `createContext` as the Worker (`worker/context.ts`). `artifact/in-page-worker.ts` provides D1 as SQLite (sql.js, set up from `migrations/`, kept in the browser's localStorage) and answers Better Auth's `/api/auth/*` requests with `worker/index.ts`. Guest sign-in is on, and nothing leaves the page. Publish that file as the artifact. Keep `artifact/` to glue only: app and API changes go in `src/`, `shared/` and `worker/` as usual, and the artifact picks them up on the next build.
+An artifact can't reach any server (local or Cloudflare), so `npm run app:artifact` builds the real app **and the real Worker** into one HTML file, `dist/artifact/index.html`. The build swaps one file, `src/lib/link.ts` (an `RPCLink` to `/api/rpc`), for `artifact/link.ts`, which calls the real router in the page with `createRouterClient` and the same `createContext` as the Worker (`worker/context.ts`). `artifact/in-page-worker.ts` provides D1 as SQLite (sql.js, set up from `migrations/`, kept in the browser's localStorage) and answers Better Auth's `/api/auth/*` requests with `worker/index.ts`. Guest sign-in is on, and nothing leaves the page. `app:artifact` then checks the file in a real browser with every network request blocked (guest sign-in, edit, save, reload), the way the artifact viewer runs it; `-- --no-check` skips that. Publish the file only after the check passes. The check uses `playwright-core` (pinned) with Playwright's Chromium, or Google Chrome if that's missing. Keep `artifact/` to glue only: app and API changes go in `src/`, `shared/` and `worker/` as usual, and the artifact picks them up on the next build.
 
 ## Verifying a deploy
 
