@@ -1,6 +1,14 @@
 # 2026-10-16-01-secrets-push-and-broker.md
 
-**Status:** built on branch `secrets-push` and merged in one PR. What's left is the testing that needs a person or main (below).
+**Status:** done. The phone agent's test (timeline step 6) passed on 2026-10-16, after PR 2 (#23, #24) installed the tools cloud sessions were missing. Follow-ups that don't block it: #18 (pre-fill the Workers Builds permission in the token form) and #21 (test `env:push`'s Cloudflare targets with the first outside secret).
+
+## Result of the phone agent's test (2026-10-16)
+
+- The first run failed: a fresh cloud session had no `node_modules`, no fnox and Node 22, so `worker:preview` stopped at `spawnSync fnox ENOENT`.
+- PR 2 was **#23**: a SessionStart hook (`.claude/hooks/session-start.sh`, cloud sessions only) installs the tools in `mise.toml` and the npm packages. **#24** fixed the warnings the run showed (the mint workflow's actions moved to Node 24, `env:lease` output, a doubled timing line).
+- Re-run in a fresh cloud session: the hook had everything in place before the first command; `env:lease` took 34s, `worker:preview` 29s and `app:smoke` 4s, all 9 checks passed. That meets the acceptance (a token in under a minute with no human input, and a Preview deploy in about 30s without `BETTER_AUTH_SECRET`).
+- Agents' tokens are the 30-day fallback, because Cloudflare doesn't cap a parent's children. Renewing them is `npm run env:setup` on the Mac, when `env:status` warns.
+- Agents can't use `worker:status`, `worker:logs` or `worker:build`: the Workers Builds API takes only user tokens. They don't need them; they see their build as the "Workers Builds" check on their PR.
 
 ## Where it stands (2026-10-16)
 
@@ -21,7 +29,7 @@ Different from the design below, and why:
 - **Your one command is `npm run worker:setup`;** Wireit runs `env:setup` first. `env:push` is only for secrets you add later.
 - **The everyday token still needs "Workers Builds Configuration: Edit" added by hand in the form,** because no form key for it is known.
 
-Done on the Mac, 2026-10-16: the owner's `worker:setup` stored both tokens and ran the limit test. **Cloudflare does not cap a parent's children** (the test child got a permission the parent lacks), so it uses the fallback: the parent stays on the Mac only, and GitHub has a 30-day agent token (`CLOUDFLARE_AGENT_TOKEN`), renewed by `env:setup` near its end. Workers Builds now builds with a build token made from the narrow everyday token, and a Preview build checked that `worker:preview` doesn't rebuild the app. Left: the phone agent's `env:lease` test (issue #17).
+Done on the Mac, 2026-10-16: the owner's `worker:setup` stored both tokens and ran the limit test. **Cloudflare does not cap a parent's children** (the test child got a permission the parent lacks), so it uses the fallback: the parent stays on the Mac only, and GitHub has a 30-day agent token (`CLOUDFLARE_AGENT_TOKEN`), renewed by `env:setup` near its end. Workers Builds now builds with a build token made from the narrow everyday token, and a Preview build checked that `worker:preview` doesn't rebuild the app. The phone agent's `env:lease` test (issue #17) then passed: see the result above.
 
 ## How we work on this (Mac and phone agent)
 
@@ -234,15 +242,15 @@ Why not a custom broker Worker: it would need to verify the agent's GitHub ident
 
 - [x] Can a user token with *API Tokens: Edit* create a child with permissions beyond its own? **Yes**: any of the user's resources (Cloudflare docs). So the parent must be account-owned.
 - [x] Can `env.targets.jsonc` be folded into `fnox.toml`? **No**: fnox rejects unknown keys.
-- [ ] **Decides the design:** is a child of an account-owned token limited to the parent's own permissions? `env:setup` tests this with the real parent and picks the design or the fallback by itself (design step 1).
+- [x] **Decides the design:** is a child of an account-owned token limited to the parent's own permissions? **No**: the limit test gave the child a permission the parent lacks, so `env:setup` uses the fallback.
 - [ ] Can a token with *Account API Tokens: Edit* list, edit or roll account tokens it didn't create? If it can, the "other tokens check" in design step 1 is essential. If it can't, that check finds nothing and is harmless.
 - [ ] What's the template-link key for Workers Builds Configuration? The docs list `account_api_tokens`, `workers_scripts`, `d1` and `account_settings`, but not that one.
-- [ ] Do `wrangler deploy`, `wrangler preview` and `wrangler d1 migrations apply` work with an account-owned token?
+- [x] Do `wrangler deploy`, `wrangler preview` and `wrangler d1 migrations apply` work with an account-owned token? **Yes** for `wrangler preview` and the migrations (an agent's token, 2026-10-16).
 - [ ] Can `[leases.cf]` in `fnox.toml` take `account_id` from the environment? If not, the workflow writes a small fnox config at run time, so the repo still holds no account id.
-- [ ] Does `wrangler preview` without `--secrets-file` give a new Preview `BETTER_AUTH_SECRET` from the base config, and does the `secrets.required` check accept it? (Part 0)
-- [ ] From a cloud session, does `gh run download` (or the annotations API) work through the proxy? The phone agent checks this before anything is built (timeline step 1). `gh workflow run` itself gets tested in timeline step 5.
-- [ ] Is the time from triggering the workflow to having the token under about 45s (measured in timeline step 5)?
-- [ ] In Workers Builds, does `worker:preview` skip `app:build` as already done, because the build command just ran it (Part 0)? If it rebuilds, drop the dependency and give agents their own goal for a Preview deploy. If it's much slower, Workers Builds (about 2 min) may be good enough.
+- [x] Does `wrangler preview` without `--secrets-file` give a new Preview `BETTER_AUTH_SECRET` from the base config, and does the `secrets.required` check accept it? (Part 0) **Yes**: a new Preview deployed without it, and guest sign-in worked there.
+- [x] From a cloud session, does `gh run download` (or the annotations API) work through the proxy? **Yes**, and `env:lease` falls back to the annotation if the download fails.
+- [x] Is the time from triggering the workflow to having the token under about 45s? **Yes**: `env:lease` took 34 to 38s in total.
+- [x] In Workers Builds, does `worker:preview` skip `app:build` as already done, because the build command just ran it (Part 0)? **Yes**, checked by a Preview build.
 
 Acceptance:
 - On the Mac, `npm run env:setup` from scratch needs only the pre-filled dashboard form and one paste.
