@@ -36,7 +36,7 @@ Every command is a subcommand of the project CLI, a TypeScript program in `cli/`
 
 | Noun | Scripts | What it acts on |
 |---|---|---|
-| `app` | `app:dev`, `app:check`, `app:build`, `app:preview`, `app:lint` | The whole app: React front end and Worker, built together by Vite |
+| `app` | `app:dev`, `app:check`, `app:build`, `app:preview`, `app:lint`, `app:smoke` | The whole app: React front end and Worker, built together by Vite |
 | `worker` | `worker:setup`, `worker:build`, `worker:status`, `worker:logs`, `worker:types`, `worker:deploy`, `worker:ci`, `worker:preview` | The Cloudflare Worker: Cloudflare setup and builds (REST API), plus wrangler steps |
 | `db` | `db:gen`, `db:migrate` | The D1 database (Drizzle schema, migrations) |
 | `test` | `test:run`, `test:watch` | Vitest, inside workerd |
@@ -47,14 +47,14 @@ Every command is a subcommand of the project CLI, a TypeScript program in `cli/`
 Rules:
 - No `scripts/` folder and no loose `.js`/`.mjs` tooling. Tooling is a command in `cli/commands/<noun>.ts`, registered in `cli/main.ts`.
 - No bare script names (`dev`, `build`, `start`). Always `noun:verb`, and the npm script must match the CLI path (`app:build` → `cli/main.ts app build`).
-- Reuse short verbs across nouns: `dev`, `check`, `build`, `preview`, `lint`, `setup`, `status`, `logs`, `types`, `deploy`, `ci`, `gen`, `migrate`, `run`, `watch`, `add`, `show`, `set`, `list`.
+- Reuse short verbs across nouns: `dev`, `check`, `build`, `preview`, `lint`, `smoke`, `setup`, `status`, `logs`, `types`, `deploy`, `ci`, `gen`, `migrate`, `run`, `watch`, `add`, `show`, `set`, `list`.
 - A new command goes in this table and in the README in the same change.
 - Pass arguments after `--`, e.g. `npm run db:gen -- add-notes`, `npm run ui:add -- dialog`, `npm run db:migrate -- --remote`. `npm run cli -- --help` lists everything.
 
 ## Folder layout
 
 ```
-cli/            project CLI: main.ts, run.ts, commands/<noun>.ts; cloudflare.ts (REST client), cloud.ts (setup/build/status/logs), project.ts (reads wrangler.jsonc, git remote)
+cli/            project CLI: main.ts, run.ts, commands/<noun>.ts; smoke.ts (HTTP checks of a running app); cloudflare.ts (REST client), cloud.ts (setup/build/status/logs), project.ts (reads wrangler.jsonc, git remote)
 shared/         runtime-neutral code used by both src/ and worker/
   schema.ts         Zod schemas: the shape of a budget (types are inferred from these)
   contract.ts       oRPC contract: procedures, inputs, outputs, errors, REST routes
@@ -113,6 +113,10 @@ Production deploys come from **Cloudflare Workers Builds**: Cloudflare builds th
 - **Guest sign-in** (Better Auth anonymous plugin) is how you get into a Preview without an account. It is on when the Worker var `GUEST_SIGN_IN` is `"true"` (set in `previews.vars`), or when the host is `localhost`. It is off in production (`vars.GUEST_SIGN_IN` is `"false"`), where `/api/auth/sign-in/anonymous` returns 404. Never set it to `"true"` for production. The app reads `GET /api/config` to decide whether to show the button.
 - `npm run worker:deploy` runs the same `worker:ci` step from your machine, with credentials and secrets from your fnox `production` profile.
 - Migrations must be backwards-compatible with the code that is still running, because they apply before the new code goes live. Add columns and tables first, and remove old ones in a later release.
+
+## Verifying a deploy
+
+After a push, check the deployed copy with `npm run app:smoke -- --url <url>`. On production it runs read-only checks (page, deep links, health, 401 without a session, spec and docs, guest sign-in closed). On a Preview or local dev it also signs in as a throwaway guest and saves and loads a budget, which only touches the staging or local database. Preview URLs are `https://<branch>-baht-dollar-budget.gedw99.workers.dev`.
 
 ## Git
 
