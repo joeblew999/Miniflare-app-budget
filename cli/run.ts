@@ -56,10 +56,11 @@ export function run(name: string, args: string[] = [], opts: RunOptions = {}): v
 }
 
 /** Run a tool with inherited stdio and report whether it succeeded, without exiting. */
-export function tryRun(name: string, args: string[] = [], opts: RunOptions = {}): boolean {
+export function tryRun(name: string, args: string[] = [], opts: RunOptions & { quiet?: boolean } = {}): boolean {
   const [cmd, argv] = command(name, args, opts)
   const started = performance.now()
-  const res = spawnSync(cmd, argv, { cwd: opts.cwd ?? root, stdio: "inherit", env: { ...process.env, ...opts.env } })
+  const res = spawnSync(cmd, argv, { cwd: opts.cwd ?? root, stdio: opts.quiet ? "ignore" : "inherit", env: { ...process.env, ...opts.env } })
+  if (opts.quiet) return res.status === 0
   logTiming(`  ${name}${args[0] && !args[0].startsWith("-") ? ` ${args[0]}` : ""}`, started)
   return res.status === 0
 }

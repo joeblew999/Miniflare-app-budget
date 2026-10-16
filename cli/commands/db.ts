@@ -19,6 +19,6 @@ export function register(program: Command): void {
 
 }
 
-export function migrateLocal(): void {
+function migrateLocal(): void {
   run("wrangler", ["d1", "migrations", "apply", DB, "--local"], { env: { CI: "1" } })
 }

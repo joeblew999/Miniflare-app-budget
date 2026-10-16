@@ -3,7 +3,6 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { DEV_SECRET, fail, run, tryRun } from "../run.ts"
-import { build } from "./app.ts"
 import * as cloud from "../cloud.ts"
 
 const SECRETS = ["BETTER_AUTH_SECRET"] // must match "secrets.required" in wrangler.jsonc
@@ -15,11 +14,8 @@ export function register(program: Command): void {
   worker.command("types").description("Regenerate worker-configuration.d.ts from wrangler.jsonc")
     .action(() => run("wrangler", ["types", "--strict-vars=false"])) // vars typed as string, since Previews override them
 
-  worker.command("deploy").description("Build and deploy from your machine (credentials and secrets from your fnox production profile)")
-    .action(() => {
-      build()
-      run("node", ["cli/main.ts", "worker", "ci"], { secrets: { profile: "production" } })
-    })
+  worker.command("deploy").description("Deploy the build in dist/ from your machine (credentials and secrets from your fnox production profile)")
+    .action(() => run("node", ["cli/main.ts", "worker", "ci"], { secrets: { profile: "production" } }))
 
   worker.command("ci").description("Deploy step for Cloudflare Workers Builds: migrate D1, then deploy with secrets from the environment. Run after app build.")
     .action(ciDeploy)

@@ -1,0 +1,4 @@
+{
+  // Installed by `npm run app:setup`; VS Code also offers them when you open the repo.
+  "recommendations": ["google.wireit"]
+}
