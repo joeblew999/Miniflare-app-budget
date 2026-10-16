@@ -105,7 +105,9 @@ export async function persist(): Promise<void> {
 globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   const request = new Request(input, init)
   const url = new URL(request.url)
-  if (url.origin !== origin || !url.pathname.startsWith("/api/")) return nativeFetch(input, init)
+  // An artifact can't reach other sites: answer as the network would, without trying (e.g. the exchange rate source).
+  if (url.origin !== origin) return new NativeResponse("No network in an artifact", { status: 503 })
+  if (!url.pathname.startsWith("/api/")) return nativeFetch(input, init)
 
   const { env } = await ready
   const response = await worker.fetch(new InPageRequest(request, requestHeaders(request.headers)) as Parameters<typeof worker.fetch>[0], env)

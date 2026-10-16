@@ -8,7 +8,7 @@ Example Google drive like app that will be able to run on Cloudflare using mitig
 
 Income and expenses in THB or AUD, any frequency, with shared tags. Every total shows both currencies.
 Sign in and your budget is saved to your account, so it's the same on every device.
-It works offline too: edits are kept on the device and sync when you're back online (the latest edit wins).
+The AUD/THB exchange rate is live (the European Central Bank's daily rate). It works offline too: edits are kept on the device and sync when you're back online (the latest edit wins).
 
 **Stack:** contract-first API with oRPC v2 (beta) and Zod 4 · Cloudflare Worker + D1 (Drizzle) ·
 Better Auth · React 19 + Vite + Tailwind v4 + shadcn/ui · TanStack Query · Vitest in workerd.
@@ -59,7 +59,7 @@ enough to run locally. For Cloudflare, set your own values in `fnox.local.toml` 
 The API is defined once, in `shared/contract.ts`, and served by the Worker in two forms:
 
 - `/api/rpc/*`: oRPC's RPC protocol, used by the React app through a client typed from the contract
-- `/api/*`: the same procedures as REST: `GET /api/me`, `GET /api/budget`, `PUT /api/budget`
+- `/api/*`: the same procedures as REST: `GET /api/rate`, `GET /api/me`, `GET /api/budget`, `PUT /api/budget`
 - `/api/docs`: interactive API docs (Scalar); `/api/spec.json` is the OpenAPI 3.2 document
 - `/api/auth/*`: Better Auth (sign up, sign in, sign out, session)
 

@@ -133,6 +133,7 @@ The app works offline. Change these parts together:
 - `vite.config.ts`: the service worker (vite-plugin-pwa) keeps the built app in the browser. It never caches `/api/*`. It is not in the artifact build.
 - `src/App.tsx`: when the session can't be checked (offline), the last signed-in user is used. Sign-in only shows when the server says there's no session.
 - `src/hooks/use-budget.ts` and `src/lib/storage.ts`: each user's last server copy and an outbox of unsent edits, in localStorage. Edits go to the outbox first, then to the server when online.
+- Exchange rate: always live, from `rate.get` (`worker/rate.ts`: ECB rate via frankfurter.dev, cached an hour at the edge). There is no manual rate. The budget keeps the last live rate, which is what's used offline.
 - Latest edit wins: `budget.save` takes `editedAt`, and the server doesn't apply an edit older than the saved budget (`applied: false`); the app then loads the newer one. `budget.get` returns `savedAt`.
 
 ## Git
