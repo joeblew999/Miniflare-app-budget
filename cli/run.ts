@@ -46,6 +46,13 @@ export function run(name: string, args: string[] = [], opts: RunOptions = {}): v
   if (res.status !== 0) process.exit(res.status ?? 1)
 }
 
+/** Run a tool with inherited stdio and report whether it succeeded, without exiting. */
+export function tryRun(name: string, args: string[] = [], opts: RunOptions = {}): boolean {
+  const [cmd, argv] = command(name, args, opts)
+  const res = spawnSync(cmd, argv, { cwd: opts.cwd ?? root, stdio: "inherit", env: { ...process.env, ...opts.env } })
+  return res.status === 0
+}
+
 /** Run a tool and return its stdout. Throws if it fails. */
 export function capture(name: string, args: string[] = [], opts: RunOptions = {}): string {
   const [cmd, argv] = command(name, args, opts)

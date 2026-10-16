@@ -5,10 +5,11 @@
 # The CLI runs commands through `fnox exec` (see cli/run.ts); nothing reads .env files.
 
 [secrets]
-# Cloudflare account to deploy into (worker:deploy, db:create, db:migrate --remote)
+# Cloudflare account to deploy into (worker:deploy, db:migrate --remote). Not needed for Workers Builds.
 CLOUDFLARE_ACCOUNT_ID = { description = "Cloudflare account ID", if_missing = "warn" }
 # API token with Workers Scripts:Edit and D1:Edit
 CLOUDFLARE_API_TOKEN = { description = "Cloudflare API token (Workers Scripts:Edit, D1:Edit)", if_missing = "warn" }
 # Signs session cookies. The default is for local dev and tests only; the CLI refuses to
-# push it to Cloudflare, so set a real value in your production profile.
+# deploy with it. For Cloudflare, set a real value in your production profile, or as a build
+# secret in Workers Builds (Settings > Build > Variables and secrets).
 BETTER_AUTH_SECRET = { description = "Better Auth secret (32+ random chars)", default = "local-dev-only-secret-do-not-deploy-0000" }

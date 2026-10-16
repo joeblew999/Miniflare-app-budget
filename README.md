@@ -32,11 +32,10 @@ enough to run locally. For Cloudflare, set your own values in `fnox.local.toml` 
     npm run app:preview         # build, then run it in workerd, http://localhost:4173
     npm run app:lint            # oxlint
     npm run worker:types        # regenerate worker-configuration.d.ts
-    npm run worker:secrets      # push secrets from your fnox production profile to Cloudflare
-    npm run worker:deploy       # build, migrate remote DB, push secrets, deploy
+    npm run worker:deploy       # build and deploy from your machine (fnox production profile)
+    npm run worker:ci           # deploy step used by Cloudflare Workers Builds
     npm run db:gen -- NAME      # write a migration after changing worker/db/schema.ts
     npm run db:migrate          # apply migrations locally (add -- --remote for Cloudflare)
-    npm run db:create           # create the Cloudflare D1 database (once)
     npm run test:run            # run tests in workerd
     npm run test:watch          # re-run tests on change
     npm run ui:add -- dialog    # add shadcn components
@@ -55,11 +54,20 @@ The API is defined once, in `shared/contract.ts`, and served by the Worker in tw
 - `/api/docs`: interactive API docs (Scalar); `/api/spec.json` is the OpenAPI 3.2 document
 - `/api/auth/*`: Better Auth (sign up, sign in, sign out, session)
 
-## First deploy
+## Deploy (Cloudflare Workers Builds)
 
-1. Put your Cloudflare values in `fnox.local.toml` under `[profiles.production]`, including a long random `BETTER_AUTH_SECRET`.
-2. `npm run db:create` and copy the printed `database_id` into `wrangler.jsonc`.
-3. `npm run worker:deploy`
+Cloudflare builds and deploys this repo on every push to `main`. One-time setup in the Cloudflare dashboard:
+
+1. **Workers & Pages → Create → Import a repository** and pick `joeblew999/Miniflare-app-budget`.
+2. Project name: **`baht-dollar-budget`**. It must match `name` in `wrangler.jsonc`.
+3. Build command: **`npm run app:build`**. Deploy command: **`npm run worker:ci`**. Leave the root directory empty.
+4. Under **Build variables and secrets**, add the secret **`BETTER_AUTH_SECRET`** with a long random value
+   (for example the output of `openssl rand -base64 32`).
+5. Save and deploy. The first build creates the D1 database, applies the migrations and gives you a
+   `baht-dollar-budget.<your-subdomain>.workers.dev` link.
+
+To deploy from your own machine instead: set `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` and
+`BETTER_AUTH_SECRET` under `[profiles.production]` in `fnox.local.toml`, then run `npm run worker:deploy`.
 
 ## Layout
 

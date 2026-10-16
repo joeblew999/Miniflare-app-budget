@@ -14,11 +14,9 @@ export function register(program: Command): void {
   db.command("migrate").description("Apply pending migrations (local by default)")
     .option("--remote", "apply to the Cloudflare database (uses your fnox production profile)")
     .action((opts: { remote?: boolean }) => opts.remote
-      ? run("wrangler", ["d1", "migrations", "apply", DB, "--remote"], { secrets: production })
+      ? run("wrangler", ["d1", "migrations", "apply", DB, "--remote", "--config", "wrangler.jsonc"], { secrets: production })
       : migrateLocal())
 
-  db.command("create").description("Create the Cloudflare D1 database; put the printed id in wrangler.jsonc")
-    .action(() => run("wrangler", ["d1", "create", "baht-dollar-budget"], { secrets: production }))
 }
 
 export function migrateLocal(): void {

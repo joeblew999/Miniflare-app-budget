@@ -13,9 +13,9 @@
   "d1_databases": [
     {
       "binding": "DB",
+      // No database_id: wrangler creates the database on the first deploy and links it
+      // (automatic resource provisioning), so this file holds no account-specific ids.
       "database_name": "baht-dollar-budget",
-      // Replace with the id printed by `npm run db:create` before the first deploy
-      "database_id": "00000000-0000-0000-0000-000000000000",
       "migrations_dir": "migrations"
     }
   ],
