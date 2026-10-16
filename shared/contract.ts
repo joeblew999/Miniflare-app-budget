@@ -30,11 +30,18 @@ export const contract = {
       .output(z.object({
         budget: BudgetSchema,
         isNew: z.boolean().describe("True when no budget was saved yet and starting figures were returned"),
+        savedAt: z.string().nullable().describe("ISO timestamp of the last save, or null when there isn't one"),
       })),
     save: authed
       .meta(openapi({ method: "PUT", path: "/budget", tags: ["Budget"], summary: "Replace your budget" }))
-      .input(BudgetSchema)
-      .output(z.object({ savedAt: z.string().describe("ISO timestamp") })),
+      .input(BudgetSchema.extend({
+        editedAt: z.iso.datetime().optional()
+          .describe("When this edit was made (ISO). If the saved budget is newer, this edit is not applied. Defaults to now."),
+      }))
+      .output(z.object({
+        savedAt: z.string().describe("ISO timestamp of the budget now saved"),
+        applied: z.boolean().describe("False when a newer save was already there (e.g. from another device), so this edit was dropped"),
+      })),
   },
 }
 

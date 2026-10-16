@@ -4,7 +4,7 @@ import path from "node:path"
 import { root, run } from "../run.ts"
 import { migrateLocal } from "./db.ts"
 import { smoke } from "../smoke.ts"
-import { checkArtifact } from "../artifact-check.ts"
+import { checkArtifact, checkOffline } from "../browser-checks.ts"
 
 /** Lets wrangler hand the secrets fnox put in the environment to the Worker in local dev. */
 const workerEnv = { CLOUDFLARE_INCLUDE_PROCESS_ENV: "true" }
@@ -36,7 +36,11 @@ export function register(program: Command): void {
 
   app.command("smoke").description("Smoke-test a running copy of the app over HTTP (production: read-only; Previews and local: full guest round trip)")
     .option("--url <url>", "base URL of the app", "http://localhost:5173")
-    .action(async (opts: { url: string }) => { if (!(await smoke(opts.url))) process.exit(1) })
+    .option("--offline", "also check offline use in a browser: edit offline, reload, reconnect (Previews and app:preview only)")
+    .action(async (opts: { url: string; offline?: boolean }) => {
+      if (!(await smoke(opts.url))) process.exit(1)
+      if (opts.offline && !(await checkOffline(opts.url))) process.exit(1)
+    })
 }
 
 export function check(): void {

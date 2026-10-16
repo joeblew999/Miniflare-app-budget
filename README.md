@@ -8,6 +8,7 @@ Example Google drive like app that will be able to run on Cloudflare using mitig
 
 Income and expenses in THB or AUD, any frequency, with shared tags. Every total shows both currencies.
 Sign in and your budget is saved to your account, so it's the same on every device.
+It works offline too: edits are kept on the device and sync when you're back online (the latest edit wins).
 
 **Stack:** contract-first API with oRPC v2 (beta) and Zod 4 · Cloudflare Worker + D1 (Drizzle) ·
 Better Auth · React 19 + Vite + Tailwind v4 + shadcn/ui · TanStack Query · Vitest in workerd.
@@ -33,6 +34,7 @@ enough to run locally. For Cloudflare, set your own values in `fnox.local.toml` 
     npm run app:lint            # oxlint
     npm run app:artifact        # app + Worker in one HTML file with no server (Claude artifact), checked in a browser
     npm run app:smoke -- --url <url>  # check a running copy (production: read-only; Preview/local: guest round trip)
+    npm run app:smoke -- --url <url> --offline  # plus offline use in a browser (Preview or app:preview)
     npm run worker:types        # regenerate worker-configuration.d.ts
     npm run worker:setup        # one-time Cloudflare setup (safe to re-run)
     npm run worker:build        # start a build and wait (-- --branch xyz for a Preview)
