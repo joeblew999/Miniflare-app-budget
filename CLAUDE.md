@@ -51,7 +51,7 @@ the client, load the vendored skills in `.claude/skills/` (`orpc`, `orpc-contrac
 - Change together: the theme boot script in `index.html` and `applyTheme()` in `src/lib/theme.ts`; for offline use,
   `vite.config.ts`, `src/App.tsx`, `src/hooks/use-budget.ts` and `src/lib/storage.ts`.
 - `artifact/` is glue only; app and API changes go in `src/`, `shared/` and `worker/`.
-- Plans go in `plans/`, named `YYYY-MM-DD-NN-slug.md`, with the file's name on its first line.
+- Plans are GitHub issues labelled `plan`, with their steps as checkboxes. PRs that carry them out say `Closes #N` or `Part of #N`.
 
 ## Cloudflare
 

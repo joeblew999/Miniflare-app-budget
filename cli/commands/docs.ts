@@ -70,11 +70,11 @@ function gen(): void {
   checkReferences(new Set([...goals, ...steps]), new Set(Object.keys(pkg.scripts)), commands)
 }
 
-/** Fail if any tracked file mentions a command that doesn't exist. Plans are skipped: they describe commands not built yet. */
+/** Fail if any tracked file mentions a command that doesn't exist. */
 function checkReferences(known: Set<string>, scripts: Set<string>, commands: Map<string, Command>): void {
   const nouns = new Set([...commands.keys()].map((c) => c.split(" ")[0]))
   const files = capture("git", ["ls-files", "-co", "--exclude-standard"]).split("\n")
-    .filter((f) => /\.(md|ts|tsx|css|html|json|jsonc|toml)$/.test(f) && !f.startsWith("plans/") && f !== "docs/commands.md" && f !== "package-lock.json" && !f.startsWith(".claude/"))
+    .filter((f) => /\.(md|ts|tsx|css|html|json|jsonc|toml)$/.test(f) && f !== "docs/commands.md" && f !== "package-lock.json" && !f.startsWith(".claude/"))
   const problems: string[] = []
   for (const file of files) {
     const text = readFileSync(path.join(root, file), "utf8")
