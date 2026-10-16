@@ -13,3 +13,11 @@ CLOUDFLARE_API_TOKEN = { description = "Cloudflare API token (Workers Scripts:Ed
 # deploy with it. For Cloudflare, set a real value in your production profile, or as a build
 # secret in Workers Builds (Settings > Build > Variables and secrets).
 BETTER_AUTH_SECRET = { description = "Better Auth secret (32+ random chars)", default = "local-dev-only-secret-do-not-deploy-0000" }
+
+# The CLI's Cloudflare commands (worker:setup, worker:build, worker:status, worker:logs,
+# worker:deploy, db:migrate --remote) run under this profile. Point these at your own
+# store in fnox.local.toml. The API token needs: Workers Scripts Edit, D1 Edit,
+# Workers Builds Configuration Edit, Account Settings Read.
+[profiles.production.secrets]
+CLOUDFLARE_ACCOUNT_ID = { description = "Cloudflare account ID", if_missing = "warn" }
+CLOUDFLARE_API_TOKEN = { description = "Cloudflare API token (see permissions above)", if_missing = "warn" }

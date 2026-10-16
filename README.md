@@ -32,6 +32,10 @@ enough to run locally. For Cloudflare, set your own values in `fnox.local.toml` 
     npm run app:preview         # build, then run it in workerd, http://localhost:4173
     npm run app:lint            # oxlint
     npm run worker:types        # regenerate worker-configuration.d.ts
+    npm run worker:setup        # one-time Cloudflare setup (safe to re-run)
+    npm run worker:build        # start a build and wait (-- --branch xyz for a Preview)
+    npm run worker:status       # URLs and recent builds
+    npm run worker:logs         # a build's log
     npm run worker:deploy       # build and deploy from your machine (fnox production profile)
     npm run worker:ci           # deploy step used by Cloudflare Workers Builds
     npm run worker:preview      # Preview step used by Workers Builds (staging DB, guest sign-in)
@@ -63,18 +67,21 @@ The API is defined once, in `shared/contract.ts`, and served by the Worker in tw
 
 ## Deploy (Cloudflare Workers Builds)
 
-Cloudflare builds and deploys this repo on every push to `main`. One-time setup in the Cloudflare dashboard:
+Deploying is a git push. Pushing to `main` deploys production, and pushing any other branch deploys that branch's Preview.
 
-1. **Workers & Pages → Create → Import a repository** and pick `joeblew999/Miniflare-app-budget`.
-2. Project name: **`baht-dollar-budget`**. It must match `name` in `wrangler.jsonc`.
-3. Build command: **`npm run app:build`**. Deploy command: **`npm run worker:ci`**. Leave the root directory empty.
-4. Under **Build variables and secrets**, add the secret **`BETTER_AUTH_SECRET`** with a long random value
-   (for example the output of `openssl rand -base64 32`).
-5. Save and deploy. The first build creates the D1 database, applies the migrations and gives you a
-   `baht-dollar-budget.<your-subdomain>.workers.dev` link.
+One-time setup, from this repo:
 
-To deploy from your own machine instead: set `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` and
-`BETTER_AUTH_SECRET` under `[profiles.production]` in `fnox.local.toml`, then run `npm run worker:deploy`.
+1. In `fnox.local.toml`, under `[profiles.production]`, set `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`.
+   The token needs Workers Scripts Edit, D1 Edit, Workers Builds Configuration Edit and Account Settings Read.
+2. `npm run worker:setup`. It creates the Worker, the staging database, the Workers Builds connection to this repo,
+   Previews and the secrets. Commit any ids it writes into `wrangler.jsonc`.
+
+After that:
+
+    npm run worker:status                 # URLs and recent builds
+    npm run worker:build                  # build production now and wait
+    npm run worker:build -- --branch xyz  # build a branch's Preview now and wait
+    npm run worker:logs                   # latest build log
 
 ## Layout
 

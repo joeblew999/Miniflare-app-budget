@@ -37,7 +37,7 @@ Every command is a subcommand of the project CLI, a TypeScript program in `cli/`
 | Noun | Scripts | What it acts on |
 |---|---|---|
 | `app` | `app:dev`, `app:check`, `app:build`, `app:preview`, `app:lint` | The whole app: React front end and Worker, built together by Vite |
-| `worker` | `worker:types`, `worker:deploy`, `worker:ci`, `worker:preview` | The Cloudflare Worker (wrangler) |
+| `worker` | `worker:setup`, `worker:build`, `worker:status`, `worker:logs`, `worker:types`, `worker:deploy`, `worker:ci`, `worker:preview` | The Cloudflare Worker: Cloudflare setup and builds (REST API), plus wrangler steps |
 | `db` | `db:gen`, `db:migrate` | The D1 database (Drizzle schema, migrations) |
 | `test` | `test:run`, `test:watch` | Vitest, inside workerd |
 | `ui` | `ui:add` | shadcn components in `src/components/ui/` |
@@ -47,14 +47,14 @@ Every command is a subcommand of the project CLI, a TypeScript program in `cli/`
 Rules:
 - No `scripts/` folder and no loose `.js`/`.mjs` tooling. Tooling is a command in `cli/commands/<noun>.ts`, registered in `cli/main.ts`.
 - No bare script names (`dev`, `build`, `start`). Always `noun:verb`, and the npm script must match the CLI path (`app:build` → `cli/main.ts app build`).
-- Reuse short verbs across nouns: `dev`, `check`, `build`, `preview`, `lint`, `types`, `deploy`, `ci`, `gen`, `migrate`, `run`, `watch`, `add`, `show`, `set`, `list`.
+- Reuse short verbs across nouns: `dev`, `check`, `build`, `preview`, `lint`, `setup`, `status`, `logs`, `types`, `deploy`, `ci`, `gen`, `migrate`, `run`, `watch`, `add`, `show`, `set`, `list`.
 - A new command goes in this table and in the README in the same change.
 - Pass arguments after `--`, e.g. `npm run db:gen -- add-notes`, `npm run ui:add -- dialog`, `npm run db:migrate -- --remote`. `npm run cli -- --help` lists everything.
 
 ## Folder layout
 
 ```
-cli/            project CLI: main.ts, run.ts, commands/<noun>.ts
+cli/            project CLI: main.ts, run.ts, commands/<noun>.ts; cloudflare.ts (REST client), cloud.ts (setup/build/status/logs), project.ts (reads wrangler.jsonc, git remote)
 shared/         runtime-neutral code used by both src/ and worker/
   schema.ts         Zod schemas: the shape of a budget (types are inferred from these)
   contract.ts       oRPC contract: procedures, inputs, outputs, errors, REST routes
@@ -99,7 +99,11 @@ Procedures that need a signed-in user use the `authed` base in the contract (it 
 
 ## Deploying
 
-Production deploys come from **Cloudflare Workers Builds**: Cloudflare builds the repo on every push to `main`.
+Production deploys come from **Cloudflare Workers Builds**: Cloudflare builds the repo on every push to `main`, and every other branch gets a Preview. **Deploying is a git push.**
+
+- **One-time setup is `npm run worker:setup`** (Cloudflare REST API, credentials from the fnox `production` profile). It creates or updates the Worker, its workers.dev URL, the staging D1 database (and writes its id into both wrangler files; commit them), a build token from your own API token, the Workers Builds connection to this repo, Previews, and random values for missing secrets, which are never printed. It is safe to re-run. `--rotate-secrets` replaces the secrets.
+- `npm run worker:build` starts and waits for a production build (`-- --branch <name>` builds that branch's Preview) and prints the URL, or the log tail if it fails. `worker:status` lists the URLs and recent builds. `worker:logs` prints a build log.
+- Don't set Cloudflare up by hand or through the dashboard. If something is missing, add it to `worker:setup` so it stays repeatable.
 
 - Build command: `npm run app:build`. Deploy command: `npm run worker:ci`. Builds use Node 24, the same as `mise.toml`.
 - `worker:ci` migrates D1 (`migrations/`), then runs `wrangler deploy` with the secrets from the build environment (`--secrets-file`, a temporary file that is deleted afterwards). On the very first deploy it deploys first, so wrangler creates the database, and then migrates.

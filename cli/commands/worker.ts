@@ -4,6 +4,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import { DEV_SECRET, fail, run, tryRun } from "../run.ts"
 import { build } from "./app.ts"
+import * as cloud from "../cloud.ts"
 
 const SECRETS = ["BETTER_AUTH_SECRET"] // must match "secrets.required" in wrangler.jsonc
 const migrateRemote = ["d1", "migrations", "apply", "DB", "--remote", "--config", "wrangler.jsonc"]
@@ -25,6 +26,30 @@ export function register(program: Command): void {
 
   worker.command("preview").description("Preview step for Workers Builds (one Preview per branch): migrate the staging D1, then deploy a Preview. Run after app build.")
     .action(previewDeploy)
+
+  worker.command("setup").description("Create or update everything on Cloudflare: Worker, staging DB, Workers Builds, Previews, secrets (safe to re-run)")
+    .option("--rotate-secrets", "generate new values for the Worker's secrets")
+    .action((opts: { rotateSecrets?: boolean }) => withCloudflare(() => cloud.setup(opts)))
+
+  worker.command("build").description("Start a Workers Build, wait for it and print the URL (production by default)")
+    .option("--branch <branch>", "build this branch's Preview instead of production")
+    .action((opts: { branch?: string }) => withCloudflare(() => cloud.build(opts)))
+
+  worker.command("status").description("Show the production and Preview URLs and the latest builds")
+    .action(() => withCloudflare(() => cloud.status()))
+
+  worker.command("logs").description("Print a build's log (the latest build by default)")
+    .argument("[build-uuid]", "build id from worker status")
+    .action((uuid?: string) => withCloudflare(() => cloud.logs(uuid)))
+}
+
+/** Cloudflare API commands need credentials: re-run this command under the fnox production profile if they're not set. */
+function withCloudflare(fn: () => Promise<void>): void {
+  if (!process.env.CLOUDFLARE_API_TOKEN && !process.env.BUDGET_CLI_FNOX) {
+    run("node", [process.argv[1], ...process.argv.slice(2)], { secrets: { profile: "production" }, env: { BUDGET_CLI_FNOX: "1" } })
+    return
+  }
+  fn().catch((e: unknown) => fail(e instanceof Error ? e.message : String(e)))
 }
 
 /** Read the required secrets from the environment, refusing missing or dev-default values. */
