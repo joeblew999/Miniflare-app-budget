@@ -23,6 +23,7 @@ export function createProgram(): Command {
   // Timings: Commander's preAction hook marks the start of every command; the total is printed
   // on exit, so it also shows when a command fails part-way (many exit early via process.exit).
   program.hook("preAction", (_root, action) => {
+    if (process.env.BUDGET_CLI_FNOX) return // re-run under fnox by withCloudflare: the outer run prints the total
     const name = [action.parent?.name(), action.name()].filter((n) => n && n !== "budget").join(" ")
     const started = performance.now()
     process.on("exit", (code) => logTiming(`${name} ${code === 0 ? "done" : `failed (exit ${code})`}`, started))

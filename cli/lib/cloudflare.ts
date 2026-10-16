@@ -36,7 +36,7 @@ export function credentials(): { token: string; accountId: string } {
  */
 export function withCloudflare(fn: () => void | Promise<void>): void {
   if (!process.env.CLOUDFLARE_API_TOKEN && !process.env.BUDGET_CLI_FNOX && !process.env.WORKERS_CI) {
-    run("node", [process.argv[1], ...process.argv.slice(2)], { secrets: { profile: "production" }, env: { BUDGET_CLI_FNOX: "1" } })
+    run("node", [process.argv[1], ...process.argv.slice(2)], { secrets: { profile: "production" }, env: { BUDGET_CLI_FNOX: "1" }, timing: false })
     return
   }
   Promise.resolve().then(fn).catch((e: unknown) => fail(e instanceof Error ? e.message : String(e)))
