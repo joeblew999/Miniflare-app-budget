@@ -75,6 +75,7 @@ src/            React app
   lib/              api.ts (oRPC client), auth-client.ts, theme.ts, storage.ts, utils.ts
   styles/           index.css (base preset), themes.css + themes.json (generated)
 .claude/skills/ vendored agent skills (oRPC)
+plans/          plans, named YYYY-MM-DD-NN-slug.md with the file's own name on the first line
 ```
 
 - `shared/` must stay runtime-neutral, with no DOM, no `localStorage`, no Worker bindings and no Node APIs. The type-check enforces this, because `shared/` is compiled under both the app and the Worker tsconfigs.
