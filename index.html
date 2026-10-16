@@ -5,6 +5,14 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Baht &amp; Dollar Budget</title>
+    <script>
+      // Apply saved theme before first paint (same logic as src/lib/theme.ts)
+      try {
+        var m = localStorage.getItem('theme-mode') || 'system', a = localStorage.getItem('theme-accent');
+        if (m === 'dark' || (m === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark');
+        if (a) document.documentElement.setAttribute('data-accent', a);
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

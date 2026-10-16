@@ -1,24 +1,22 @@
-
-!.vscode/extensions.json
-# Editor directories and files
-# Logs
-*.local
-*.log
-*.njsproj
-*.ntvs*
-*.sln
-*.suo
-*.sw?
-.DS_Store
-.idea
-.vscode/*
-.wrangler
+# Dependencies and build output
+node_modules
 dist
 dist-ssr
-lerna-debug.log*
+.wrangler
+
+# Local-only config and secrets (fnox.local.toml holds each person's own provider setup)
+*.local
+fnox.local.toml
+.env
+.env.*
+
+# Logs
 logs
-node_modules
-npm-debug.log*
-pnpm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+*.log
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.sw?

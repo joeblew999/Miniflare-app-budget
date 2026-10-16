@@ -4,12 +4,17 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "oxlint",
-    "preview": "npm run build && wrangler dev",
-    "deploy": "npm run build && wrangler deploy",
-    "ui:add": "shadcn add"
+    "app:dev": "vite",
+    "app:build": "tsc -b && vite build",
+    "app:lint": "oxlint",
+    "worker:dev": "npm run app:build && wrangler dev",
+    "worker:deploy": "npm run app:build && fnox exec -- wrangler deploy",
+    "ui:add": "shadcn add",
+    "theme:show": "shadcn preset resolve",
+    "theme:set": "shadcn init --force --reinstall --yes --preset",
+    "theme:gen": "node scripts/gen-themes.mjs",
+    "env:list": "fnox list",
+    "env:check": "fnox check"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",

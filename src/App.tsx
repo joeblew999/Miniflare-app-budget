@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { Plus, X, RotateCcw } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ThemeSwitcher } from "@/components/theme-switcher"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardAction } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -74,7 +75,8 @@ export default function App() {
           <h1 className="text-3xl font-semibold tracking-tight">Baht &amp; Dollar Budget</h1>
           <p className="text-muted-foreground">Income and costs in Thai baht or Australian dollars. Every total shows both.</p>
         </div>
-        <div className="flex items-end gap-2">
+        <div className="flex flex-wrap items-end gap-2">
+          <ThemeSwitcher />
           <div className="grid gap-1.5">
             <Label htmlFor="rate">Exchange rate (฿ per A$1)</Label>
             <Input id="rate" type="number" step="0.01" min="0" className="w-32 font-mono tabular-nums"
@@ -180,7 +182,7 @@ export default function App() {
 }
 
 function Stat({ label, thb, aud, tone }: { label: string; thb: number; aud: number; tone?: "good" | "bad" }) {
-  const color = tone === "bad" ? "text-destructive" : tone === "good" ? "text-primary" : ""
+  const color = tone === "bad" ? "text-destructive" : tone === "good" ? "text-primary dark:text-foreground" : ""
   return (
     <div className="grid gap-0.5">
       <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</span>
