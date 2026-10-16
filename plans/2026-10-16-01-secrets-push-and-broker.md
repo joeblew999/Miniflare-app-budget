@@ -1,6 +1,27 @@
 # 2026-10-16-01-secrets-push-and-broker.md
 
-**Status:** planned. To be built on the Mac (it needs the real secrets in fnox).
+**Status:** built on branch `secrets-push` and merged in one PR. What's left is the testing that needs a person or main (below).
+
+## Where it stands (2026-10-16)
+
+Built and tested on the Mac:
+- **Part 0:** deploys keep the Worker's secrets when `BETTER_AUTH_SECRET` isn't set. `worker:preview` from the Mac deployed this branch's Preview in about 9s, and `app:smoke` passed all 9 checks on it.
+- **`env:setup`** stores this machine's Cloudflare token and account id in fnox, from a pre-filled form and the clipboard, and checks the token's permissions. It never waits: if it needs you, it opens the form and stops.
+- **`env:status`, `env:push`** work (the targets file is empty for now).
+- **`env:issue`** encrypts a token to a session's key; the round trip was tested locally.
+
+Built, tested only once merged (they need `main` or a person):
+- The parent-token half of `env:setup`, the mint workflow, and `env:lease` from the phone agent (timeline steps 4 to 6).
+
+Different from the design below, and why:
+- **This machine's token is a user token you create in the form, not one the parent makes.** The Workers Builds API rejects account tokens.
+- **Agents' tokens have no Workers Builds permission,** for the same reason: agents deploy with wrangler and check with `app:smoke`.
+- **The workflow mints with the CLI (`env:issue`, a goal), not `fnox lease`.** `env:setup` needs the same token code anyway, and the workflow then needs no fnox config.
+- **`env:lease` tries the artifact, then the annotation,** so it works whatever the phone agent's proxy allows. Timeline step 1 is now only a check.
+- **Your one command is `npm run worker:setup`;** Wireit runs `env:setup` first. `env:push` is only for secrets you add later.
+- **The everyday token still needs "Workers Builds Configuration: Edit" added by hand in the form,** because no form key for it is known.
+
+Next for you: add that permission to "baht-dollar-budget (this Mac)", then run `npm run worker:setup`. Run it again after creating the parent token in the form it opens.
 
 ## How we work on this (Mac and phone agent)
 
