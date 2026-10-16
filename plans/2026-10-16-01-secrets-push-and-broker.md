@@ -21,7 +21,7 @@ Different from the design below, and why:
 - **Your one command is `npm run worker:setup`;** Wireit runs `env:setup` first. `env:push` is only for secrets you add later.
 - **The everyday token still needs "Workers Builds Configuration: Edit" added by hand in the form,** because no form key for it is known.
 
-Next for you: add that permission to "baht-dollar-budget (this Mac)", then run `npm run worker:setup`. Run it again after creating the parent token in the form it opens.
+Done on the Mac, 2026-10-16: the owner's `worker:setup` stored both tokens and ran the limit test. **Cloudflare does not cap a parent's children** (the test child got a permission the parent lacks), so it uses the fallback: the parent stays on the Mac only, and GitHub has a 30-day agent token (`CLOUDFLARE_AGENT_TOKEN`), renewed by `env:setup` near its end. Workers Builds now builds with a build token made from the narrow everyday token, and a Preview build checked that `worker:preview` doesn't rebuild the app. Left: the phone agent's `env:lease` test (issue #17).
 
 ## How we work on this (Mac and phone agent)
 

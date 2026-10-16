@@ -139,8 +139,9 @@ async function ensureBuildToken(name: string): Promise<string> {
   const existing = tokens.find((t) => t.build_token_name === tokenName)
   if (existing) return existing.build_token_uuid
   const { token } = credentials()
-  const verified = (await cfMaybe<{ id: string; expires_on?: string }>("GET", "/accounts/:account/tokens/verify"))
-    ?? (await cf<{ id: string; expires_on?: string }>("GET", "/user/tokens/verify"))
+  // The everyday token is a user token (the Workers Builds API needs one); an account token answers the other endpoint.
+  const verified = (await cf<{ id: string; expires_on?: string }>("GET", "/user/tokens/verify").catch(() => null))
+    ?? (await cf<{ id: string; expires_on?: string }>("GET", "/accounts/:account/tokens/verify"))
   // A short-lived token (an agent's lease) would break every build once it expires.
   if (verified.expires_on && Date.parse(verified.expires_on) < Date.now() + 30 * 86_400_000)
     fail(`This Cloudflare token expires on ${verified.expires_on}, too soon to become the Workers Builds build token. Use your everyday token (npm run env:setup).`)
