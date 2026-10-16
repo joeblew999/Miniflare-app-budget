@@ -36,46 +36,11 @@ Every command is a subcommand of the project CLI, a TypeScript program in `cli/`
 
 **Nobody remembers an order.** [Wireit](https://github.com/google/wireit) runs the commands: each one declares in `package.json` → `wireit` what it needs first (`dependencies`) and what it reads (`files`). Run a goal and Wireit runs its steps first, in order, each once, and skips any step whose files haven't changed since it last passed. Each CLI command does one thing; the order lives only in the Wireit config.
 
-**Goals** are the npm scripts you run (`npm run <goal>`). Any command can also run on its own, without what it depends on, with `npm run cli -- <noun> <verb>`; `npm run cli -- --help` lists them all.
+**Goals** are the npm scripts you run (`npm run <goal>`). **Steps** live only in the `wireit` section and run as part of a goal. Any command also runs on its own, without what it depends on, with `npm run cli -- <noun> <verb>`.
 
-<!-- generated:goals (npm run app:verify writes this; edit package.json or cli/ instead) -->
-| Goal | Runs first | What it does |
-|---|---|---|
-| `app:setup` |  | Set up this machine: install the VS Code extensions in .vscode/extensions.json and a browser for the checks (safe to re-run) |
-| `app:dev` | `db:migrate` | Dev server with hot reload; the Worker runs in workerd (http://localhost:5173) |
-| `app:verify` | `app:check`, `test:run`, `app:lint`, `docs:gen` | Runs app:check, test:run, app:lint, docs:gen |
-| `app:artifact -- [--no-check]` | `app:check` | Build the app and its Worker into one HTML file that runs with no server (dist/artifact/index.html, for a Claude artifact), then check it in a browser with the network blocked |
-| `app:smoke -- [--url <url>] [--offline]` |  | Smoke-test a running copy of the app over HTTP (production: read-only; Previews and local: full guest round trip) |
-| `app:preview` | `app:build`, `db:migrate` | Run the production build (dist/) in workerd (http://localhost:4173) |
-| `app:build` | `app:check` | Build the app and Worker to dist/ |
-| `worker:ci` |  | Workers Builds' deploy command (after its app:build): migrate D1, then deploy with secrets from the environment |
-| `worker:preview` |  | Workers Builds' preview command (after its app:build), one Preview per branch: migrate the staging D1, then deploy a Preview |
-| `worker:deploy` | `app:verify`, `app:build` | Deploy the build in dist/ from your machine (credentials and secrets from your fnox production profile) |
-| `worker:setup -- [--rotate-secrets]` |  | Create or update everything on Cloudflare: Worker, staging DB, Workers Builds, Previews, secrets (safe to re-run) |
-| `worker:build -- [--branch <branch>]` |  | Start a Workers Build, wait for it and print the URL (production by default) |
-| `worker:status` |  | Show the production and Preview URLs and the latest builds |
-| `worker:logs -- [build-uuid]` |  | Print a build's log (the latest build by default) |
-| `db:gen -- <name>` |  | Write a SQL migration for changes to worker/db/schema.ts |
-| `ui:add -- <components...>` |  | Add shadcn components, e.g. ui add dialog sheet |
-| `theme:set -- <code>` |  | Switch the base preset (build codes at ui.shadcn.com/create), then regenerate the accent themes from it |
+Every command, with what it runs first, is in [docs/commands.md](docs/commands.md), generated from `package.json` and the CLI:
 
-**Steps** (only in the `wireit` section, run as part of a goal):
-
-- `worker:types`: Regenerate worker-configuration.d.ts from wrangler.jsonc
-- `app:check` (after `worker:types`): Type-check everything: app, worker, shared and cli
-- `app:lint`: Lint with oxlint
-- `test:run` (after `worker:types`): Run all tests once
-- `db:migrate`: Apply pending migrations (local by default)
-- `docs:gen`: Regenerate the command tables in the docs, and fail on any mention of a command that doesn't exist
-
-**Other commands**, run on their own with `npm run cli -- <noun> <verb>`:
-
-- `test watch`: Re-run tests on change
-- `theme show`: Show the project's current shadcn preset
-- `theme gen`: Regenerate src/styles/themes.css and themes.json from shadcn presets (~20s per theme)
-- `env list`: List the secrets declared in fnox.toml
-- `env check`: Check every secret has a value in your store
-<!-- /generated:goals -->
+@docs/commands.md
 
 Rules:
 - Never write "run X, then Y" in docs or code. If a command needs another first, add it to its Wireit `dependencies`. Give a step `files` (and `"output": []` if it writes nothing) so it's skipped when nothing changed; leave `files` off a step that must always run.
@@ -83,7 +48,7 @@ Rules:
 - No `scripts/` folder and no loose `.js`/`.mjs` tooling. Tooling is a command in `cli/commands/<noun>.ts`, registered in `cli/main.ts`.
 - Script names are `noun:verb` and match the CLI path (`app:build` → `cli/main.ts app build`). No bare names (`dev`, `build`, `start`).
 - Reuse short verbs across nouns: `dev`, `check`, `verify`, `build`, `preview`, `lint`, `smoke`, `setup`, `status`, `logs`, `types`, `deploy`, `ci`, `gen`, `migrate`, `run`, `watch`, `add`, `show`, `set`, `list`, `artifact`.
-- The command tables in this file and the README are generated by the `docs:gen` step (part of `app:verify`) from `package.json` and the CLI's descriptions. Don't edit them; change the command's description in `cli/commands/<noun>.ts` instead. The same step fails if any file mentions a command that doesn't exist (`plans/` excepted).
+- Never list commands by hand, in any doc. `docs/commands.md` is the only list, generated by the `docs:gen` step (part of `app:verify`) from `package.json` and the CLI's descriptions; link to it instead. To change what it says, change the command's description in `cli/commands/<noun>.ts`. The same step fails if any file mentions a command that doesn't exist (`plans/` excepted).
 - Every command prints timings to stderr: each tool it runs (tsc, vite, wrangler…) and its total, including on failure. They come from Commander's `preAction` hook in `cli/main.ts` and `logTiming` in `cli/run.ts`. Set `BUDGET_TIMINGS=0` to hide them.
 - Pass arguments after `--`: `npm run db:gen -- add-notes`, `npm run app:smoke -- --url <url>`.
 - The Wireit extension for VS Code (`google.wireit`, in `.vscode/extensions.json`) checks the config as you edit it. `npm run app:setup` installs it.
@@ -92,7 +57,7 @@ Rules:
 
 ```
 artifact/       glue for `app:artifact`: an oRPC link that calls the router in the page, D1 on sql.js, a cookie jar for Better Auth. No app logic
-cli/            project CLI: main.ts, program.ts (all commands), run.ts, commands/<noun>.ts (docs.ts generates the command tables in the docs); smoke.ts (HTTP checks of a running app); browser-checks.ts (Playwright checks: the artifact build, and offline use); cloudflare.ts (REST client), cloud.ts (setup/build/status/logs), project.ts (reads wrangler.jsonc, git remote)
+cli/            project CLI: main.ts, program.ts (all commands), run.ts, commands/<noun>.ts (docs.ts writes docs/commands.md); smoke.ts (HTTP checks of a running app); browser-checks.ts (Playwright checks: the artifact build, and offline use); cloudflare.ts (REST client), cloud.ts (setup/build/status/logs), project.ts (reads wrangler.jsonc, git remote)
 shared/         runtime-neutral code used by both src/ and worker/
   schema.ts         Zod schemas: the shape of a budget (types are inferred from these)
   contract.ts       oRPC contract: procedures, inputs, outputs, errors, REST routes
@@ -112,6 +77,7 @@ src/            React app
   lib/              api.ts (oRPC client), link.ts (where API calls go), auth-client.ts, theme.ts, storage.ts, utils.ts
   styles/           index.css (base preset), themes.css + themes.json (generated)
 .claude/skills/ vendored agent skills (oRPC)
+docs/           commands.md: every command, generated (never edit)
 plans/          plans, named YYYY-MM-DD-NN-slug.md with the file's own name on the first line
 ```
 
