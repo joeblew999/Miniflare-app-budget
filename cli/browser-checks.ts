@@ -131,7 +131,8 @@ export async function checkOffline(baseUrl: string): Promise<boolean> {
       await rate.waitFor(TIMEOUT)
       const got = await rate.inputValue()
       if (got !== value) throw new Error(`expected ${value}, got ${got}`)
-      return `app opened, still signed in, rate ${got}`
+      await page.getByText("Offline: saved on this device").waitFor(TIMEOUT)
+      return `app opened, still signed in, rate ${got}, shown as offline`
     })
     await run.step("reconnect and sync", async () => {
       await context.setOffline(false)
