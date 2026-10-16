@@ -36,7 +36,7 @@ Every command is a subcommand of the project CLI, a TypeScript program in `cli/`
 
 | Noun | Scripts | What it acts on |
 |---|---|---|
-| `app` | `app:dev`, `app:check`, `app:build`, `app:preview`, `app:lint`, `app:smoke` | The whole app: React front end and Worker, built together by Vite |
+| `app` | `app:dev`, `app:check`, `app:build`, `app:preview`, `app:lint`, `app:artifact`, `app:smoke` | The whole app: React front end and Worker, built together by Vite |
 | `worker` | `worker:setup`, `worker:build`, `worker:status`, `worker:logs`, `worker:types`, `worker:deploy`, `worker:ci`, `worker:preview` | The Cloudflare Worker: Cloudflare setup and builds (REST API), plus wrangler steps |
 | `db` | `db:gen`, `db:migrate` | The D1 database (Drizzle schema, migrations) |
 | `test` | `test:run`, `test:watch` | Vitest, inside workerd |
@@ -55,7 +55,8 @@ Rules:
 ## Folder layout
 
 ```
-cli/            project CLI: main.ts, run.ts, commands/<noun>.ts; smoke.ts (HTTP checks of a running app); cloudflare.ts (REST client), cloud.ts (setup/build/status/logs), project.ts (reads wrangler.jsonc, git remote)
+artifact/       glue for `app:artifact`: an oRPC link that calls the router in the page, D1 on sql.js, a cookie jar for Better Auth. No app logic
+cli/            project CLI: main.ts, run.ts, commands/<noun>.ts; smoke.ts (HTTP checks of a running app); artifact-check.ts (browser check of the artifact build); cloudflare.ts (REST client), cloud.ts (setup/build/status/logs), project.ts (reads wrangler.jsonc, git remote)
 shared/         runtime-neutral code used by both src/ and worker/
   schema.ts         Zod schemas: the shape of a budget (types are inferred from these)
   contract.ts       oRPC contract: procedures, inputs, outputs, errors, REST routes
@@ -72,7 +73,7 @@ src/            React app
   App.tsx           sign-in gate, then the budget
   components/       app components; components/ui/ is managed by the shadcn CLI
   hooks/            use-budget.ts: load and autosave through the API
-  lib/              api.ts (oRPC client), auth-client.ts, theme.ts, storage.ts, utils.ts
+  lib/              api.ts (oRPC client), link.ts (where API calls go), auth-client.ts, theme.ts, storage.ts, utils.ts
   styles/           index.css (base preset), themes.css + themes.json (generated)
 .claude/skills/ vendored agent skills (oRPC)
 plans/          plans, named YYYY-MM-DD-NN-slug.md with the file's own name on the first line
@@ -115,6 +116,10 @@ Production deploys come from **Cloudflare Workers Builds**: Cloudflare builds th
 - **Guest sign-in** (Better Auth anonymous plugin) is how you get into a Preview without an account. It is on when the Worker var `GUEST_SIGN_IN` is `"true"` (set in `previews.vars`), or when the host is `localhost`. It is off in production (`vars.GUEST_SIGN_IN` is `"false"`), where `/api/auth/sign-in/anonymous` returns 404. Never set it to `"true"` for production. The app reads `GET /api/config` to decide whether to show the button.
 - `npm run worker:deploy` runs the same `worker:ci` step from your machine, with credentials and secrets from your fnox `production` profile.
 - Migrations must be backwards-compatible with the code that is still running, because they apply before the new code goes live. Add columns and tables first, and remove old ones in a later release.
+
+## Showing the app in a Claude artifact
+
+An artifact can't reach any server (local or Cloudflare), so `npm run app:artifact` builds the real app **and the real Worker** into one HTML file, `dist/artifact/index.html`. The build swaps one file, `src/lib/link.ts` (an `RPCLink` to `/api/rpc`), for `artifact/link.ts`, which calls the real router in the page with `createRouterClient` and the same `createContext` as the Worker (`worker/context.ts`). `artifact/in-page-worker.ts` provides D1 as SQLite (sql.js, set up from `migrations/`, kept in the browser's localStorage) and answers Better Auth's `/api/auth/*` requests with `worker/index.ts`. Guest sign-in is on, and nothing leaves the page. `app:artifact` then checks the file in a real browser with every network request blocked (guest sign-in, edit, save, reload), the way the artifact viewer runs it; `-- --no-check` skips that. Publish the file only after the check passes. The check uses `playwright-core` (pinned) with Playwright's Chromium, or Google Chrome if that's missing. Keep `artifact/` to glue only: app and API changes go in `src/`, `shared/` and `worker/` as usual, and the artifact picks them up on the next build.
 
 ## Verifying a deploy
 
