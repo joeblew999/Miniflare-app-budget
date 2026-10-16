@@ -63,8 +63,8 @@ the client, load the vendored skills in `.claude/skills/` (`orpc`, `orpc-contrac
 - Agents (cloud sessions) get Cloudflare access with `env:lease`, never by asking for a token. They deploy their branch's
   Preview with `worker:preview`, never production.
 - After a push, check the deployed copy with `app:smoke`.
-- Whenever a Preview is deployed, give its URL (`https://<branch>-baht-dollar-budget.gedw99.workers.dev`) first in the
-  reply to the person, and in the PR description.
+- Whenever a Preview is deployed, give its URL (`https://<branch>-baht-dollar-budget.gedw99.workers.dev`) and its API
+  docs (the same URL plus `/api/docs`) first in the reply to the person, and in the PR description.
 
 ## Git
 
