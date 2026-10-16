@@ -64,7 +64,8 @@ the client, load the vendored skills in `.claude/skills/` (`orpc`, `orpc-contrac
   Preview with `worker:preview`, never production.
 - After a push, check the deployed copy with `app:smoke`.
 - Whenever a Preview is deployed, give its URL (`https://<branch>-baht-dollar-budget.gedw99.workers.dev`) and its API
-  docs (the same URL plus `/api/docs`) first in the reply to the person, and in the PR description.
+  docs (the same URL plus `/api/docs`) first in the reply to the person, and in the PR description. A Preview is
+  deleted with its branch when the PR merges, so after a merge give production's URL and API docs instead.
 
 ## Git
 
