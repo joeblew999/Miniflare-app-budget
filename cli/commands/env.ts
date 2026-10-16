@@ -1,27 +1,33 @@
 import type { Command } from "commander"
 import { spawnSync } from "node:child_process"
-import { cf, sleep } from "../lib/cloudflare.ts"
+import { cf, CloudflareError, sleep } from "../lib/cloudflare.ts"
 import { capture, fail, run } from "../lib/run.ts"
 
 /** This machine's own fnox file (gitignored): it says which store holds each value, never the value itself. */
 const LOCAL = "fnox.local.toml"
 
+const TOKEN_NAME = "baht-dollar-budget (this Mac)"
+
 /**
- * This machine's everyday Cloudflare token, used by the worker commands and as the Workers Builds build token.
- * It must be a user token: the Workers Builds API rejects account tokens. Keep it to these permissions,
- * because every branch's build can reach the build token.
+ * The permissions this machine's everyday Cloudflare token needs: the one list. env setup builds the pre-filled form
+ * from it, names any that are missing, and checks each with a read call. When the app needs more, add a line here,
+ * and every developer's next env setup asks for it.
+ * It's a user token, because the Workers Builds API rejects account tokens. It also becomes the Workers Builds build
+ * token, which every branch's build can reach, so keep it to what's needed.
  */
-const EVERYDAY = {
-  permissions: ["Workers Scripts: Edit", "D1: Edit", "Workers Builds Configuration: Edit", "Account Settings: Read"],
-  form: "https://dash.cloudflare.com/profile/api-tokens?" + new URLSearchParams({
-    permissionGroupKeys: JSON.stringify([
-      { key: "workers_scripts", type: "edit" }, { key: "d1", type: "edit" }, { key: "account_settings", type: "read" },
-    ]),
-    accountId: "*",
-    zoneId: "all",
-    name: "baht-dollar-budget (this Mac)",
-  }),
-}
+const PERMISSIONS: { name: string; formKey?: { key: string; type: "edit" | "read" }; probe: string }[] = [
+  { name: "Workers Scripts: Edit", formKey: { key: "workers_scripts", type: "edit" }, probe: "/workers/scripts" },
+  { name: "D1: Edit", formKey: { key: "d1", type: "edit" }, probe: "/d1/database" },
+  { name: "Workers Builds Configuration: Edit", probe: "/builds/tokens" }, // no known form key yet: added by hand in the form
+  { name: "Account Settings: Read", formKey: { key: "account_settings", type: "read" }, probe: "" },
+]
+
+const FORM = "https://dash.cloudflare.com/profile/api-tokens?" + new URLSearchParams({
+  permissionGroupKeys: JSON.stringify(PERMISSIONS.flatMap((p) => (p.formKey ? [p.formKey] : []))),
+  accountId: "*",
+  zoneId: "all",
+  name: TOKEN_NAME,
+})
 
 export function register(program: Command): void {
   const env = program.command("env").description("Secrets and env vars (fnox)")
@@ -86,25 +92,47 @@ async function setup(opts: { account?: string; provider: string }): Promise<void
   if (token) console.log("Cloudflare token: in fnox, and working.")
   else {
     console.log("This machine needs a Cloudflare user token. Opening the form; check it has exactly these permissions:")
-    for (const p of EVERYDAY.permissions) console.log(`  - ${p}`)
-    console.log(`  ${EVERYDAY.form}`)
-    spawnSync("open", [EVERYDAY.form])
+    for (const p of PERMISSIONS) console.log(`  - ${p.name}${p.formKey ? "" : " (add this one in the form)"}`)
+    console.log(`  ${FORM}`)
+    spawnSync("open", [FORM])
     token = await tokenFromClipboard()
     fnoxStore("CLOUDFLARE_API_TOKEN", "production", token, opts.provider)
     console.log("Cloudflare token: stored in fnox.")
   }
 
-  const stored = fnoxGet("CLOUDFLARE_ACCOUNT_ID", "production")
-  if (stored && !opts.account) console.log(`Cloudflare account: ${stored}`)
+  let account = fnoxGet("CLOUDFLARE_ACCOUNT_ID", "production")
+  if (account && !opts.account) console.log(`Cloudflare account: ${account}`)
   else {
-    let id = opts.account
-    if (!id) {
+    account = opts.account
+    if (!account) {
       const accounts = await cf<{ id: string; name: string }[]>("GET", "/accounts", undefined, { token })
       if (accounts.length !== 1)
         fail(`Your token can see ${accounts.length} accounts. Run again with -- --account <id>:\n${accounts.map((a) => `  ${a.id}  ${a.name}`).join("\n")}`)
-      id = accounts[0].id
+      account = accounts[0].id
     }
-    fnoxStore("CLOUDFLARE_ACCOUNT_ID", "production", id, opts.provider)
-    console.log(`Cloudflare account: ${id}, stored in fnox.`)
+    fnoxStore("CLOUDFLARE_ACCOUNT_ID", "production", account, opts.provider)
+    console.log(`Cloudflare account: ${account}, stored in fnox.`)
   }
+
+  await waitForPermissions(token, account)
+}
+
+/** Check the token has every permission; if not, say which to add in the dashboard and wait until it has (the token itself doesn't change). */
+async function waitForPermissions(token: string, account: string): Promise<void> {
+  const missing = async () => {
+    const out: string[] = []
+    for (const p of PERMISSIONS)
+      await cf("GET", `/accounts/${account}${p.probe}`, undefined, { token }).catch((e: unknown) => {
+        if (e instanceof CloudflareError && e.status === 403) out.push(p.name) // forbidden: the token lacks it
+        else throw e // anything else (offline, Cloudflare down) is not a missing permission
+      })
+    return out
+  }
+  let gaps = await missing()
+  if (!gaps.length) { console.log("Cloudflare token: has every permission it needs."); return }
+  console.log(`The token is missing: ${gaps.join(", ")}.`)
+  console.log(`In Cloudflare: My Profile > API Tokens > edit \"${TOKEN_NAME}\", add them and save. Waiting (up to 5 minutes)…`)
+  for (let i = 0; i < 60 && gaps.length; i++) { await sleep(5000); gaps = await missing() }
+  if (gaps.length) fail(`Still missing: ${gaps.join(", ")}. Add them to the token, then run this again.`)
+  console.log("Cloudflare token: has every permission it needs.")
 }
