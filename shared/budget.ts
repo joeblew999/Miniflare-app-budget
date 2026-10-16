@@ -1,31 +1,18 @@
 // Budget domain: data model and currency maths. Shared by the React app and the Worker.
 
-export type Currency = "THB" | "AUD"
-export type Freq = "day" | "week" | "month" | "quarter" | "year"
-export type Period = "week" | "month" | "year"
-export type Kind = "income" | "expense"
+import type { Budget, Currency, Freq, Line, Period } from "./schema"
 
-export interface Tag {
-  id: string
-  name: string
-}
+export type { Budget, Currency, Freq, Kind, Line, Period, Tag } from "./schema"
 
-export interface Line {
-  id: string
-  name: string
-  amount: string | number
-  cur: Currency
-  freq: Freq
-  tags: string[]
-}
+/** A line while it's being edited: the amount box can hold "" or a partly typed number. */
+export type DraftLine = Omit<Line, "amount"> & { amount: number | string }
+/** A budget while it's being edited in the app. Convert with toBudget() before saving. */
+export type DraftBudget = Omit<Budget, "income" | "expense"> & { income: DraftLine[]; expense: DraftLine[] }
 
-export interface Budget {
-  rate: number // THB per 1 AUD
-  period: Period
-  nextId: number
-  tags: Tag[]
-  income: Line[]
-  expense: Line[]
+/** Clean up a draft into a valid Budget (amounts as numbers, never negative). */
+export function toBudget(d: DraftBudget): Budget {
+  const line = (l: DraftLine): Line => ({ ...l, amount: Math.max(0, Number(l.amount) || 0) })
+  return { ...d, income: d.income.map(line), expense: d.expense.map(line) }
 }
 
 export const FREQ_LABEL: Record<Freq, string> = {
@@ -74,7 +61,7 @@ export function convert(v: number, from: Currency, to: Currency, rate: number): 
 }
 
 /** A line's value per month, in baht. */
-export function monthlyTHB(line: Line, rate: number): number {
+export function monthlyTHB(line: DraftLine, rate: number): number {
   return convert((Number(line.amount) || 0) * PER_MONTH[line.freq], line.cur, "THB", rate)
 }
 

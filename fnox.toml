@@ -1,10 +1,14 @@
 # Secrets and environment variables for this project.
-# Values are NOT stored here. Each person points these names at their own store
-# in fnox.local.toml (gitignored), e.g. their keychain, 1Password or age.
-# Commands that need them run through `fnox exec` (see package.json).
+# Real values are NOT stored here. Each person points these names at their own store
+# in fnox.local.toml (gitignored), e.g. their keychain, 1Password or age, usually under
+# [profiles.production] for anything that reaches Cloudflare.
+# The CLI runs commands through `fnox exec` (see cli/run.ts); nothing reads .env files.
 
 [secrets]
-# Cloudflare account to deploy into (worker:deploy)
+# Cloudflare account to deploy into (worker:deploy, db:create, db:migrate --remote)
 CLOUDFLARE_ACCOUNT_ID = { description = "Cloudflare account ID", if_missing = "warn" }
-# API token with Workers Scripts:Edit (worker:deploy)
-CLOUDFLARE_API_TOKEN = { description = "Cloudflare API token (Workers Scripts:Edit)", if_missing = "warn" }
+# API token with Workers Scripts:Edit and D1:Edit
+CLOUDFLARE_API_TOKEN = { description = "Cloudflare API token (Workers Scripts:Edit, D1:Edit)", if_missing = "warn" }
+# Signs session cookies. The default is for local dev and tests only; the CLI refuses to
+# push it to Cloudflare, so set a real value in your production profile.
+BETTER_AUTH_SECRET = { description = "Better Auth secret (32+ random chars)", default = "local-dev-only-secret-do-not-deploy-0000" }

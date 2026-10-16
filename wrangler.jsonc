@@ -3,11 +3,23 @@
   "name": "baht-dollar-budget",
   "main": "worker/index.ts",
   "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
     // API routes go to the Worker; everything else is the React app
     "run_worker_first": ["/api/*"]
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "baht-dollar-budget",
+      // Replace with the id printed by `npm run db:create` before the first deploy
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // Values come from fnox (see fnox.toml); never put them in this file
+  "secrets": { "required": ["BETTER_AUTH_SECRET"] },
   "observability": { "enabled": true }
 }

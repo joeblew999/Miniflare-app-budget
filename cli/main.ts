@@ -2,7 +2,9 @@
 // Runs as TypeScript directly on Node 22+ (type stripping), no build step.
 import { Command } from "commander"
 import { register as app } from "./commands/app.ts"
+import { register as db } from "./commands/db.ts"
 import { register as env } from "./commands/env.ts"
+import { register as test } from "./commands/test.ts"
 import { register as theme } from "./commands/theme.ts"
 import { register as ui } from "./commands/ui.ts"
 import { register as worker } from "./commands/worker.ts"
@@ -11,6 +13,6 @@ const program = new Command("budget")
   .description("Baht & Dollar Budget project CLI (noun verb)")
   .showHelpAfterError()
 
-for (const group of [app, worker, ui, theme, env]) group(program)
+for (const group of [app, worker, db, test, ui, theme, env]) group(program)
 
 program.parse()

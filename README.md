@@ -7,45 +7,67 @@ Example Google drive like app that will be able to run on Cloudflare using mitig
 ## Baht & Dollar Budget
 
 Income and expenses in THB or AUD, any frequency, with shared tags. Every total shows both currencies.
+Sign in and your budget is saved to your account, so it's the same on every device.
 
-Stack: React 19 + Vite + Tailwind v4 + shadcn/ui on a Cloudflare Worker (built together with
-`@cloudflare/vite-plugin`). TypeScript strict throughout.
+**Stack:** contract-first API with oRPC v2 (beta) and Zod 4 · Cloudflare Worker + D1 (Drizzle) ·
+Better Auth · React 19 + Vite + Tailwind v4 + shadcn/ui · TanStack Query · Vitest in workerd.
+TypeScript strict throughout. See [CLAUDE.md](CLAUDE.md) for the conventions.
 
 ## Setup
 
-    mise install          # tools from mise.toml (node, fnox)
+    mise install          # tools from mise.toml (node 24, fnox)
     npm install
+    npm run app:dev       # http://localhost:5173 (applies local DB migrations first)
 
-`mise.toml` holds tools only. Every command is an npm script named `noun:verb` (see CLAUDE.md).
-Secrets and env vars are declared in `fnox.toml`; each person points them at their own store in
-`fnox.local.toml` (gitignored).
+`mise.toml` holds tools only. Every command is an npm script named `noun:verb`, backed by the
+TypeScript CLI in `cli/`. Secrets and env vars are declared in `fnox.toml`; the dev defaults there are
+enough to run locally. For Cloudflare, set your own values in `fnox.local.toml` (gitignored) under
+`[profiles.production]`: `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `BETTER_AUTH_SECRET`.
 
 ## Commands
 
-Every command is `npm run noun:verb`, backed by the TypeScript CLI in `cli/` (`npm run cli -- --help`).
+    npm run app:dev             # app + Worker with hot reload, http://localhost:5173
+    npm run app:check           # type-check app, worker, shared and cli
+    npm run app:build           # type-check and build to dist/
+    npm run app:preview         # build, then run it in workerd, http://localhost:4173
+    npm run app:lint            # oxlint
+    npm run worker:types        # regenerate worker-configuration.d.ts
+    npm run worker:secrets      # push secrets from your fnox production profile to Cloudflare
+    npm run worker:deploy       # build, migrate remote DB, push secrets, deploy
+    npm run db:gen -- NAME      # write a migration after changing worker/db/schema.ts
+    npm run db:migrate          # apply migrations locally (add -- --remote for Cloudflare)
+    npm run db:create           # create the Cloudflare D1 database (once)
+    npm run test:run            # run tests in workerd
+    npm run test:watch          # re-run tests on change
+    npm run ui:add -- dialog    # add shadcn components
+    npm run theme:show          # current shadcn preset
+    npm run theme:set -- CODE   # switch base preset (build codes at ui.shadcn.com/create)
+    npm run theme:gen           # regenerate the runtime accent themes from shadcn presets
+    npm run env:list            # secrets fnox knows about
+    npm run env:check           # are they all set?
 
-    npm run app:dev            # app + Worker with hot reload, http://localhost:5173
-    npm run app:check          # type-check app, worker, shared and cli
-    npm run app:build          # type-check and build to dist/
-    npm run app:preview        # build, then run it in workerd, http://localhost:4173
-    npm run app:lint           # oxlint
-    npm run worker:types       # regenerate worker-configuration.d.ts
-    npm run worker:deploy      # build and deploy (secrets via fnox)
-    npm run ui:add -- dialog   # add shadcn components
-    npm run theme:show         # current shadcn preset
-    npm run theme:set -- CODE  # switch base preset (build codes at ui.shadcn.com/create)
-    npm run theme:gen          # regenerate the runtime accent themes from shadcn presets
-    npm run env:list           # secrets fnox knows about
-    npm run env:check          # are they all set?
+## API
+
+The API is defined once, in `shared/contract.ts`, and served by the Worker in two forms:
+
+- `/api/rpc/*`: oRPC's RPC protocol, used by the React app through a client typed from the contract
+- `/api/*`: the same procedures as REST: `GET /api/me`, `GET /api/budget`, `PUT /api/budget`
+- `/api/docs`: interactive API docs (Scalar); `/api/spec.json` is the OpenAPI 3.2 document
+- `/api/auth/*`: Better Auth (sign up, sign in, sign out, session)
+
+## First deploy
+
+1. Put your Cloudflare values in `fnox.local.toml` under `[profiles.production]`, including a long random `BETTER_AUTH_SECRET`.
+2. `npm run db:create` and copy the printed `database_id` into `wrangler.jsonc`.
+3. `npm run worker:deploy`
 
 ## Layout
 
     cli/       project CLI (TypeScript)
-    src/       React app: components/, components/ui/ (shadcn), lib/, styles/
-    worker/    Cloudflare Worker entry (/api/*; everything else is static assets)
-    shared/    code shared by app and Worker (budget model; oRPC contract next)
-
-See CLAUDE.md for the conventions.
+    shared/    contract, Zod schemas, budget maths (used by app and Worker)
+    worker/    Worker: routing, oRPC router, auth, D1 access, tests
+    migrations/ SQL migrations for D1
+    src/       React app: components/, components/ui/ (shadcn), hooks/, lib/, styles/
 
 ## Theme
 
@@ -53,15 +75,13 @@ The base theme is official shadcn preset **`b2oDXH5AO`** (base neutral, theme gr
 https://ui.shadcn.com/create?preset=b2oDXH5AO
 
 In the app, the header switcher changes **light / dark / system** and the **accent colour**, from the 18
-official shadcn themes (neutral, amber, blue, cyan, emerald, fuchsia, green, indigo, lime, orange,
-pink, purple, red, rose, sky, teal, violet, yellow). Choices are saved per browser.
+official shadcn themes. Choices are saved per browser.
 
 - `src/styles/themes.css` / `themes.json` are generated by `npm run theme:gen`, which runs
   `shadcn init --preset` once per theme and extracts the CSS variables. Don't hand-edit them.
-- Switching uses the `.dark` class and `<html data-accent="…">` (`src/lib/theme.ts`).
 - Change the base with `npm run theme:set -- CODE`, then `npm run theme:gen`.
 
-## Data
+## Moving from the browser-only version
 
-Saved in the browser (localStorage key `baht-dollar-budget-v3`). Next step for sync across
-devices: a Worker API backed by D1, swapping `load()` / `save()` in `src/lib/storage.ts`.
+Budgets saved by the earlier browser-only version are imported into your account the first time you
+sign in on that browser.
