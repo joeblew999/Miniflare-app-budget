@@ -31,6 +31,7 @@ enough to run locally. For Cloudflare, set your own values in `fnox.local.toml` 
     npm run app:build           # type-check and build to dist/
     npm run app:preview         # build, then run it in workerd, http://localhost:4173
     npm run app:lint            # oxlint
+    npm run app:artifact        # app + Worker in one HTML file that runs with no server (Claude artifact)
     npm run app:smoke -- --url <url>  # check a running copy (production: read-only; Preview/local: guest round trip)
     npm run worker:types        # regenerate worker-configuration.d.ts
     npm run worker:setup        # one-time Cloudflare setup (safe to re-run)

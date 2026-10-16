@@ -1,5 +1,7 @@
 import type { Command } from "commander"
-import { run } from "../run.ts"
+import { readFileSync, writeFileSync } from "node:fs"
+import path from "node:path"
+import { root, run } from "../run.ts"
 import { migrateLocal } from "./db.ts"
 import { smoke } from "../smoke.ts"
 
@@ -24,6 +26,9 @@ export function register(program: Command): void {
   app.command("lint").description("Lint with oxlint")
     .action(() => run("oxlint"))
 
+  app.command("artifact").description("Build the app and its Worker into one self-contained HTML file (dist/artifact/index.html) that runs with no server, for a Claude artifact")
+    .action(artifact)
+
   app.command("smoke").description("Smoke-test a running copy of the app over HTTP (production: read-only; Previews and local: full guest round trip)")
     .option("--url <url>", "base URL of the app", "http://localhost:5173")
     .action(async (opts: { url: string }) => { if (!(await smoke(opts.url))) process.exit(1) })
@@ -36,4 +41,14 @@ export function check(): void {
 export function build(): void {
   check()
   run("vite", ["build"])
+}
+
+/** Same app, same Worker, one HTML file: artifact/in-page-worker.ts answers /api/* inside the page. */
+export function artifact(): void {
+  check()
+  run("vite", ["build", "--config", "vite.artifact.config.ts"])
+  // Bundled libraries contain a literal U+FFFD inside template strings; write it as an escape so the file is clean text.
+  const file = path.join(root, "dist/artifact/index.html")
+  writeFileSync(file, readFileSync(file, "utf8").replaceAll("\uFFFD", "\\uFFFD"))
+  console.log(`Built ${path.relative(root, file)}`)
 }

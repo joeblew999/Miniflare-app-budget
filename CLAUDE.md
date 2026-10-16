@@ -36,7 +36,7 @@ Every command is a subcommand of the project CLI, a TypeScript program in `cli/`
 
 | Noun | Scripts | What it acts on |
 |---|---|---|
-| `app` | `app:dev`, `app:check`, `app:build`, `app:preview`, `app:lint`, `app:smoke` | The whole app: React front end and Worker, built together by Vite |
+| `app` | `app:dev`, `app:check`, `app:build`, `app:preview`, `app:lint`, `app:artifact`, `app:smoke` | The whole app: React front end and Worker, built together by Vite |
 | `worker` | `worker:setup`, `worker:build`, `worker:status`, `worker:logs`, `worker:types`, `worker:deploy`, `worker:ci`, `worker:preview` | The Cloudflare Worker: Cloudflare setup and builds (REST API), plus wrangler steps |
 | `db` | `db:gen`, `db:migrate` | The D1 database (Drizzle schema, migrations) |
 | `test` | `test:run`, `test:watch` | Vitest, inside workerd |
@@ -55,6 +55,7 @@ Rules:
 ## Folder layout
 
 ```
+artifact/       in-page Worker for `app:artifact`: answers /api/* inside the page (D1 = sql.js, cookie jar). Only glue, no app logic
 cli/            project CLI: main.ts, run.ts, commands/<noun>.ts; smoke.ts (HTTP checks of a running app); cloudflare.ts (REST client), cloud.ts (setup/build/status/logs), project.ts (reads wrangler.jsonc, git remote)
 shared/         runtime-neutral code used by both src/ and worker/
   schema.ts         Zod schemas: the shape of a budget (types are inferred from these)
@@ -115,6 +116,10 @@ Production deploys come from **Cloudflare Workers Builds**: Cloudflare builds th
 - **Guest sign-in** (Better Auth anonymous plugin) is how you get into a Preview without an account. It is on when the Worker var `GUEST_SIGN_IN` is `"true"` (set in `previews.vars`), or when the host is `localhost`. It is off in production (`vars.GUEST_SIGN_IN` is `"false"`), where `/api/auth/sign-in/anonymous` returns 404. Never set it to `"true"` for production. The app reads `GET /api/config` to decide whether to show the button.
 - `npm run worker:deploy` runs the same `worker:ci` step from your machine, with credentials and secrets from your fnox `production` profile.
 - Migrations must be backwards-compatible with the code that is still running, because they apply before the new code goes live. Add columns and tables first, and remove old ones in a later release.
+
+## Showing the app in a Claude artifact
+
+An artifact can't reach any server (local or Cloudflare), so `npm run app:artifact` builds the real app **and the real Worker** into one HTML file, `dist/artifact/index.html`. `artifact/in-page-worker.ts` answers `/api/*` inside the page: D1 is SQLite (sql.js, set up from `migrations/`, kept in the browser's localStorage), guest sign-in is on, and nothing leaves the page. Publish that file as the artifact. Keep `artifact/` to glue only: app and API changes go in `src/`, `shared/` and `worker/` as usual, and the artifact picks them up on the next build.
 
 ## Verifying a deploy
 
