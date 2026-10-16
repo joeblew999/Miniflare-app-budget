@@ -4,6 +4,7 @@ Example Google drive like app that will be able to run on Cloudflare using mitig
 
 ---
 
+## Baht & Dollar Budget
 
 Income and expenses in THB or AUD, any frequency, with shared tags. Every total shows both currencies.
 
