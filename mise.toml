@@ -1,0 +1,33 @@
+[tools]
+node = "22"
+
+[tasks.install]
+description = "Install dependencies"
+run = "npm install"
+sources = ["package.json", "package-lock.json"]
+outputs = ["node_modules/.package-lock.json"]
+
+[tasks.dev]
+description = "Vite dev server with hot reload (http://localhost:5173)"
+depends = ["install"]
+run = "npx vite"
+
+[tasks.build]
+description = "Type-check and build to dist/"
+depends = ["install"]
+run = "npm run build"
+
+[tasks.preview]
+description = "Build, then serve dist/ through Cloudflare's local runtime (http://localhost:8787)"
+depends = ["build"]
+run = "npx wrangler dev"
+
+[tasks.deploy]
+description = "Build and deploy to Cloudflare Workers"
+depends = ["build"]
+run = "npx wrangler deploy"
+
+[tasks."ui:add"]
+description = "Add shadcn components, e.g. mise run ui:add dialog"
+depends = ["install"]
+run = "npx shadcn add"
