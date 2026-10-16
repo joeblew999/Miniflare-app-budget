@@ -26,7 +26,8 @@
     "theme:set": "wireit",
     "theme:gen": "wireit",
     "env:list": "wireit",
-    "env:check": "wireit"
+    "env:check": "wireit",
+    "env:setup": "wireit"
   },
   "wireit": {
     "app:dev": {
@@ -127,7 +128,10 @@
       "command": "node cli/main.ts worker preview"
     },
     "worker:setup": {
-      "command": "node cli/main.ts worker setup"
+      "command": "node cli/main.ts worker setup",
+      "dependencies": [
+        "env:setup"
+      ]
     },
     "worker:build": {
       "command": "node cli/main.ts worker build"
@@ -183,6 +187,9 @@
     },
     "env:check": {
       "command": "node cli/main.ts env check"
+    },
+    "env:setup": {
+      "command": "node cli/main.ts env setup"
     },
     "docs:gen": {
       "command": "node cli/main.ts docs gen",

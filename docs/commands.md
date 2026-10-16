@@ -19,7 +19,7 @@ Run with `npm run <goal>`. Wireit runs what each one needs first, in order, and 
 | `worker:deploy` | `app:verify`, `app:build` | Deploy the build in dist/ from your machine (credentials and secrets from your fnox production profile) |
 | `worker:ci` |  | Workers Builds' deploy command (after its app:build): migrate D1, then deploy with secrets from the environment |
 | `worker:preview` |  | Workers Builds' preview command (after its app:build), one Preview per branch: migrate the staging D1, then deploy a Preview |
-| `worker:setup -- [--rotate-secrets]` |  | Create or update everything on Cloudflare: Worker, staging DB, Workers Builds, Previews, secrets (safe to re-run) |
+| `worker:setup -- [--rotate-secrets]` | `env:setup` | Create or update everything on Cloudflare: Worker, staging DB, Workers Builds, Previews, secrets (safe to re-run) |
 | `worker:build -- [--branch <branch>]` |  | Start a Workers Build, wait for it and print the URL (production by default) |
 | `worker:status` |  | Show the production and Preview URLs and the latest builds |
 | `worker:logs -- [build-uuid]` |  | Print a build's log (the latest build by default) |
@@ -31,6 +31,7 @@ Run with `npm run <goal>`. Wireit runs what each one needs first, in order, and 
 | `theme:gen -- [--json-only]` |  | Regenerate src/styles/themes.css and themes.json from shadcn presets (~20s per theme) |
 | `env:list` |  | List the secrets declared in fnox.toml |
 | `env:check` |  | Check every secret has a value in your store |
+| `env:setup -- [--account <id>] [--provider <name>]` |  | Give this machine its Cloudflare access in fnox, the everyday token and account id: opens a pre-filled Cloudflare form for anything missing and picks the token up from the clipboard (safe to re-run) |
 
 ## Steps
 

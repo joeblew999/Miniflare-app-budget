@@ -26,12 +26,13 @@ export function credentials(): { token: string; accountId: string } {
   const token = process.env.CLOUDFLARE_API_TOKEN
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID
   if (!token || !accountId)
-    fail("CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID must be set (fnox production profile, see fnox.toml).")
+    fail("No Cloudflare token for this machine. On your Mac: `npm run env:setup` stores one in fnox.")
   return { token, accountId }
 }
 
-export async function cf<T>(method: string, path: string, body?: unknown, init: { raw?: string; contentType?: string } = {}): Promise<T> {
-  const { token, accountId } = credentials()
+export async function cf<T>(method: string, path: string, body?: unknown, init: { raw?: string; contentType?: string; token?: string } = {}): Promise<T> {
+  // init.token checks a token that isn't stored yet (env setup); it only reaches paths without :account.
+  const { token, accountId } = init.token ? { token: init.token, accountId: "" } : credentials()
   const url = BASE + path.replace(":account", accountId)
   const headers: Record<string, string> = { authorization: `Bearer ${token}` }
   let payload: string | undefined = init.raw
