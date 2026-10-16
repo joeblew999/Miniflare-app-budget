@@ -1,7 +1,7 @@
 import { exports } from "cloudflare:workers"
 import { START } from "@shared/budget"
 import type { Budget } from "@shared/schema"
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 const ORIGIN = "http://example.com"
 const worker = exports.default
@@ -79,6 +79,26 @@ describe("worker", () => {
     expect(got.savedAt).toBe("2026-10-16T10:30:00.000Z")
   })
 
+  describe("exchange rate", () => {
+    afterEach(() => { vi.restoreAllMocks() })
+
+    it("returns today's rate from the source", async () => {
+      const source = vi.spyOn(globalThis, "fetch").mockImplementationOnce(async () => // built inside the request, as Workers require
+        Response.json({ amount: 1, base: "AUD", date: "2026-10-15", rates: { THB: 23.179 } }))
+      const res = await call("/api/rate")
+      expect(res.status).toBe(200)
+      expect(await res.json()).toMatchObject({ rate: 23.179, date: "2026-10-15" })
+      expect(String(source.mock.calls[0][0])).toContain("base=AUD&symbols=THB")
+    })
+
+    it("says unavailable when the source fails", async () => {
+      vi.spyOn(globalThis, "fetch").mockImplementationOnce(async () => new Response("down", { status: 502 }))
+      vi.spyOn(console, "error").mockImplementation(() => {})
+      const res = await call("/api/rate")
+      expect(res.status).toBe(503)
+    })
+  })
+
   it("keeps each person's budget separate", async () => {
     const a = await signUp("a@example.com")
     const b = await signUp("b@example.com")
@@ -96,7 +116,7 @@ describe("worker", () => {
 
   it("serves the OpenAPI spec for the contract", async () => {
     const spec = await (await call("/api/spec.json")).json<{ paths: Record<string, object> }>()
-    expect(Object.keys(spec.paths).sort()).toEqual(["/budget", "/config", "/me"])
+    expect(Object.keys(spec.paths).sort()).toEqual(["/budget", "/config", "/me", "/rate"])
   })
 
   it("does not offer guest sign-in on a normal host (production)", async () => {

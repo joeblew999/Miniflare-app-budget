@@ -47,7 +47,7 @@ Every command is a subcommand of the project CLI, a TypeScript program in `cli/`
 Rules:
 - No `scripts/` folder and no loose `.js`/`.mjs` tooling. Tooling is a command in `cli/commands/<noun>.ts`, registered in `cli/main.ts`.
 - No bare script names (`dev`, `build`, `start`). Always `noun:verb`, and the npm script must match the CLI path (`app:build` → `cli/main.ts app build`).
-- Reuse short verbs across nouns: `dev`, `check`, `build`, `preview`, `lint`, `smoke`, `setup`, `status`, `logs`, `types`, `deploy`, `ci`, `gen`, `migrate`, `run`, `watch`, `add`, `show`, `set`, `list`.
+- Reuse short verbs across nouns: `dev`, `check`, `build`, `preview`, `lint`, `smoke`, `setup`, `status`, `logs`, `types`, `deploy`, `ci`, `gen`, `migrate`, `run`, `watch`, `add`, `show`, `set`, `list`, `artifact`.
 - A new command goes in this table and in the README in the same change.
 - Every command prints timings to stderr: each tool it runs (tsc, vite, wrangler…) and its total, including on failure. They come from Commander's `preAction` hook in `cli/main.ts` and `logTiming` in `cli/run.ts`. Set `BUDGET_TIMINGS=0` to hide them.
 - Pass arguments after `--`, e.g. `npm run db:gen -- add-notes`, `npm run ui:add -- dialog`, `npm run db:migrate -- --remote`. `npm run cli -- --help` lists everything.
@@ -133,6 +133,7 @@ The app works offline. Change these parts together:
 - `vite.config.ts`: the service worker (vite-plugin-pwa) keeps the built app in the browser. It never caches `/api/*`. It is not in the artifact build.
 - `src/App.tsx`: when the session can't be checked (offline), the last signed-in user is used. Sign-in only shows when the server says there's no session.
 - `src/hooks/use-budget.ts` and `src/lib/storage.ts`: each user's last server copy and an outbox of unsent edits, in localStorage. Edits go to the outbox first, then to the server when online.
+- Exchange rate: always live, from `rate.get` (`worker/rate.ts`: ECB rate via frankfurter.dev, cached an hour at the edge). There is no manual rate. The budget keeps the last live rate, which is what's used offline.
 - Latest edit wins: `budget.save` takes `editedAt`, and the server doesn't apply an edit older than the saved budget (`applied: false`); the app then loads the newer one. `budget.get` returns `savedAt`.
 
 ## Git

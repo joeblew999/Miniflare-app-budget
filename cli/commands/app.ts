@@ -52,7 +52,7 @@ export function build(): void {
   run("vite", ["build"])
 }
 
-/** Same app, same Worker, one HTML file: artifact/in-page-worker.ts answers /api/* inside the page. */
+/** Same app, same Worker, one HTML file (vite.artifact.config.ts): API calls run the router in the page, via artifact/. */
 export function artifact(): string {
   check()
   run("vite", ["build", "--config", "vite.artifact.config.ts"])

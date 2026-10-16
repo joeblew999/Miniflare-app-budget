@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardAction } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
@@ -19,28 +18,37 @@ const BAR_COLORS = ["var(--chart-5)", "var(--chart-3)", "var(--chart-1)", "var(-
 
 interface BudgetEditorProps {
   initial: DraftBudget
-  /** Called after every edit (not on first render). */
+  /** Called after every edit (not on first render), and when the live exchange rate changes. */
   onChange: (b: DraftBudget) => void
+  /** Today's exchange rate, or null when it can't be fetched (offline): then the last one saved is used. */
+  liveRate: { rate: number; date: string } | null
   /** Extra controls for the header, e.g. save status and account. */
   toolbar?: ReactNode
 }
 
-export function BudgetEditor({ initial, onChange, toolbar }: BudgetEditorProps) {
+const rateDate = (iso: string) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })
+
+export function BudgetEditor({ initial, onChange, liveRate, toolbar }: BudgetEditorProps) {
   const [b, setB] = useState<DraftBudget>(initial)
+  // The rate is always the live one. The budget keeps the last one, for when it can't be fetched (offline).
+  const live = liveRate?.rate
+  const rate = live ?? b.rate
   const onChangeRef = useRef(onChange)
   useEffect(() => { onChangeRef.current = onChange })
   useEffect(() => {
-    if (b !== initial) onChangeRef.current(b) // skip the untouched starting value
-  }, [b, initial])
+    const newRate = live !== undefined && live !== b.rate
+    if (b !== initial || newRate) onChangeRef.current(newRate ? { ...b, rate: live } : b) // not for the untouched start
+  }, [b, initial, live])
 
   const f = FROM_MONTH[b.period]
-  const toAUD = (thb: number) => convert(thb, "THB", "AUD", b.rate)
+  const toAUD = (thb: number) => convert(thb, "THB", "AUD", rate)
   const tagName = (id: string) => b.tags.find((t) => t.id === id)?.name ?? ""
 
   const monthly = useMemo(() => ({
-    income: b.income.map((l) => monthlyTHB(l, b.rate)),
-    expense: b.expense.map((l) => monthlyTHB(l, b.rate)),
-  }), [b])
+    income: b.income.map((l) => monthlyTHB(l, rate)),
+    expense: b.expense.map((l) => monthlyTHB(l, rate)),
+  }), [b, rate])
   const inM = monthly.income.reduce((a, v) => a + v, 0)
   const outM = monthly.expense.reduce((a, v) => a + v, 0)
   const leftM = inM - outM
@@ -90,10 +98,12 @@ export function BudgetEditor({ initial, onChange, toolbar }: BudgetEditorProps) 
         </div>
         <div className="flex flex-wrap items-end gap-2">
           <ThemeSwitcher />
-          <div className="grid gap-1.5">
-            <Label htmlFor="rate">Exchange rate (฿ per A$1)</Label>
-            <Input id="rate" type="number" step="0.01" min="0" className="w-32 font-mono tabular-nums"
-              value={b.rate} onChange={(e) => patch((d) => { d.rate = Number(e.target.value) || 0 })} />
+          <div className="grid gap-0.5 px-1" aria-live="polite">
+            <span className="text-sm text-muted-foreground">Exchange rate</span>
+            <span id="rate" className="font-mono tabular-nums">฿{rate.toFixed(2)} per A$1</span>
+            <span className="text-xs text-muted-foreground">
+              {liveRate ? `ECB rate, ${rateDate(liveRate.date)}` : "Last known rate"}
+            </span>
           </div>
           <Button variant="outline" onClick={() => setB(structuredClone(START) as DraftBudget)} title="Reset to starting figures">
             <RotateCcw /> Reset
@@ -187,8 +197,8 @@ export function BudgetEditor({ initial, onChange, toolbar }: BudgetEditorProps) 
         onChange={updateLine} onAdd={addLine} onRemove={removeLine} />
 
       <p className="max-w-prose text-xs text-muted-foreground">
-        Monthly figures use 365 days, 52 weeks and 4 quarters a year. The starting rate is the mid-market rate in
-        mid-October 2026; a bank or Wise transfer lands a little lower. Your budget is saved to your account as you type.
+        Monthly figures use 365 days, 52 weeks and 4 quarters a year. The exchange rate is the European Central
+        Bank's daily reference rate, updated each working day; a bank or Wise transfer lands a little lower. Your budget is saved to your account as you type.
       </p>
     </div>
   )

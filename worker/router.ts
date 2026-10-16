@@ -3,6 +3,7 @@ import { contract } from "@shared/contract"
 import { ORPCError, implement } from "@orpc/server"
 import type { Auth } from "./auth"
 import { loadBudget, saveBudget } from "./budget-store"
+import { fetchRate } from "./rate"
 import type { DB } from "./db"
 
 export interface Context {
@@ -27,6 +28,16 @@ const authed = base.use(requireUser)
 export const router = base.router({
   config: {
     get: base.config.get.handler(({ context }) => ({ guestSignIn: context.guestSignIn })),
+  },
+  rate: {
+    get: base.rate.get.handler(async ({ errors }) => {
+      try {
+        return await fetchRate()
+      } catch (error) {
+        console.error(error)
+        throw errors.SERVICE_UNAVAILABLE()
+      }
+    }),
   },
   me: {
     get: authed.me.get.handler(({ context }) => ({

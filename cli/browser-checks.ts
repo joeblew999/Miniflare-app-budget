@@ -45,11 +45,11 @@ function stepper(title: string) {
 }
 
 const TIMEOUT = { timeout: 15_000 }
-const randomRate = () => String(10 + Math.floor(Math.random() * 90))
+const randomAmount = () => String(100 + Math.floor(Math.random() * 900))
 
 async function signInAsGuest(page: Page): Promise<string> {
   await page.getByText("Continue as guest").click(TIMEOUT)
-  await page.locator("#rate").waitFor(TIMEOUT)
+  await page.getByLabel("Amount").first().waitFor(TIMEOUT)
   return "budget shown"
 }
 
@@ -68,8 +68,9 @@ export async function checkArtifact(file: string): Promise<boolean> {
       run.problems.push(`network request (would be blocked in an artifact): ${url}`)
       return route.abort()
     })
-    const rate = page.locator("#rate")
-    const value = randomRate()
+    // Edits go into the first income line's amount (the exchange rate is live, not edited).
+    const amount = page.getByLabel("Amount").first()
+    const value = randomAmount()
 
     await run.step("page loads with no server", async () => {
       await page.goto(ARTIFACT_URL)
@@ -78,16 +79,16 @@ export async function checkArtifact(file: string): Promise<boolean> {
     })
     await run.step("guest sign-in", () => signInAsGuest(page))
     await run.step("edit and save", async () => {
-      await rate.fill(value)
+      await amount.fill(value)
       await page.getByText("Saved", { exact: true }).waitFor(TIMEOUT)
-      return `exchange rate set to ${value}`
+      return `income amount set to ${value}`
     })
     await run.step("reload keeps the data", async () => {
       await page.reload()
-      await rate.waitFor(TIMEOUT)
-      const got = await rate.inputValue()
+      await amount.waitFor(TIMEOUT)
+      const got = await amount.inputValue()
       if (got !== value) throw new Error(`expected ${value}, got ${got}`)
-      return `still signed in, rate ${got}`
+      return `still signed in, amount ${got}`
     })
   } finally {
     await browser.close()
@@ -103,8 +104,9 @@ export async function checkOffline(baseUrl: string): Promise<boolean> {
     const context = await browser.newContext()
     const page = await context.newPage()
     page.on("pageerror", (e) => run.problems.push(`page error: ${e.message}`))
-    const rate = page.locator("#rate")
-    const value = randomRate()
+    // Edits go into the first income line's amount (the exchange rate is live, not edited).
+    const amount = page.getByLabel("Amount").first()
+    const value = randomAmount()
 
     await run.step("app installs for offline use", async () => {
       await page.goto(base)
@@ -120,52 +122,62 @@ export async function checkOffline(baseUrl: string): Promise<boolean> {
       return "service worker in control"
     })
     await run.step("guest sign-in", () => signInAsGuest(page))
+    await run.step("live exchange rate shown and kept", async () => {
+      const live = await (await context.request.get(`${base}/api/rate`)).json() as { rate: number }
+      await page.getByText(`฿${live.rate.toFixed(2)} per A$1`).waitFor(TIMEOUT)
+      await page.getByText("Saved", { exact: true }).waitFor(TIMEOUT)
+      const saved = await (await context.request.get(`${base}/api/budget`, { headers: { origin: base } })).json() as { budget: { rate: number } }
+      if (saved.budget.rate !== live.rate) throw new Error(`budget keeps rate ${saved.budget.rate}, live is ${live.rate}`)
+      return `฿${live.rate} shown, and kept with the budget for offline use`
+    })
     await run.step("edit while offline", async () => {
       await context.setOffline(true)
-      await rate.fill(value)
+      await amount.fill(value)
       await page.getByText("Saved on this device", { exact: true }).waitFor(TIMEOUT)
-      return `rate ${value}, kept on this device`
+      return `amount ${value}, kept on this device`
     })
     await run.step("reload with no connection", async () => {
       await page.reload()
-      await rate.waitFor(TIMEOUT)
-      const got = await rate.inputValue()
+      await amount.waitFor(TIMEOUT)
+      const got = await amount.inputValue()
       if (got !== value) throw new Error(`expected ${value}, got ${got}`)
       await page.getByText("Saved on this device", { exact: true }).waitFor(TIMEOUT)
       await page.getByText("Offline", { exact: true }).waitFor(TIMEOUT)
-      return `app opened, still signed in, rate ${got}, marked offline`
+      return `app opened, still signed in, amount ${got}, marked offline`
     })
     await run.step("reconnect and sync", async () => {
       await context.setOffline(false)
       await page.getByText("Saved", { exact: true }).waitFor(TIMEOUT)
       await page.getByText("Offline", { exact: true }).waitFor({ state: "hidden", ...TIMEOUT })
       const res = await context.request.get(`${base}/api/budget`, { headers: { origin: base } })
-      const body = await res.json() as { budget?: { rate: number } }
-      if (String(body.budget?.rate) !== value) throw new Error(`server has rate ${body.budget?.rate}, expected ${value}`)
-      return `server has rate ${value}`
+      const body = await res.json() as { budget?: { income: { amount: number }[] } }
+      const saved = body.budget?.income[0]?.amount
+      if (String(saved) !== value) throw new Error(`server has ${saved}, expected ${value}`)
+      return `server has ${value}`
     })
     await run.step("a newer save on another device wins", async () => {
-      const mine = randomRate()
-      const theirs = String((Number(mine) % 90) + 10 + 1) // always different from mine
+      const mine = randomAmount()
+      const theirs = String(Number(mine) + 1) // always different from mine
       await context.setOffline(true)
-      await rate.fill(mine) // edited first, on this device, offline
+      await amount.fill(mine) // edited first, on this device, offline
       await page.getByText("Saved on this device", { exact: true }).waitFor(TIMEOUT)
       // Another device, same account, saves later while this one is still offline.
       const other = await browser.newContext({ storageState: await context.storageState() })
-      const current = await (await other.request.get(`${base}/api/budget`, { headers: { origin: base } })).json() as { budget: object }
+      const current = await (await other.request.get(`${base}/api/budget`, { headers: { origin: base } })).json() as { budget: { income: { amount: number }[] } }
       const put = await other.request.put(`${base}/api/budget`, {
-        headers: { origin: base }, data: { ...current.budget, rate: Number(theirs), editedAt: new Date().toISOString() },
+        headers: { origin: base }, data: { ...current.budget, income: current.budget.income.map((l, i) => i ? l : { ...l, amount: Number(theirs) }), editedAt: new Date().toISOString() },
       })
       if (!put.ok()) throw new Error(`other device's save returned ${put.status()}`)
       await other.close()
       await context.setOffline(false)
-      await page.waitForFunction(`document.querySelector("#rate")?.value === ${JSON.stringify(theirs)}`, undefined, TIMEOUT)
-      const body = await (await context.request.get(`${base}/api/budget`, { headers: { origin: base } })).json() as { budget?: { rate: number } }
-      if (String(body.budget?.rate) !== theirs) throw new Error(`server has rate ${body.budget?.rate}, expected ${theirs}`)
+      await page.waitForFunction(`document.querySelector('input[aria-label="Amount"]')?.value === ${JSON.stringify(theirs)}`, undefined, TIMEOUT)
+      const body = await (await context.request.get(`${base}/api/budget`, { headers: { origin: base } })).json() as { budget?: { income: { amount: number }[] } }
+      const saved = body.budget?.income[0]?.amount
+      if (String(saved) !== theirs) throw new Error(`server has ${saved}, expected ${theirs}`)
       return `this device's older edit (${mine}) dropped, both show ${theirs}`
     })
   } finally {
     await browser.close()
   }
-  return run.report(6, "Works offline, syncs when back online, and the latest edit wins.")
+  return run.report(7, "Works offline, syncs when back online, and the latest edit wins.")
 }

@@ -2,12 +2,13 @@
 // Offline, the last signed-in user is used, so the app still opens; sign-in is only shown when the
 // server answers that there's no session.
 import { useEffect, useSyncExternalStore } from "react"
-import { onlineManager, useQueryClient } from "@tanstack/react-query"
+import { onlineManager, useQuery, useQueryClient } from "@tanstack/react-query"
 import { LogOut } from "lucide-react"
 import { BudgetEditor } from "@/components/budget-editor"
 import { SignIn } from "@/components/sign-in"
 import { Button } from "@/components/ui/button"
 import { type SaveState, useBudget } from "@/hooks/use-budget"
+import { orpc } from "@/lib/api"
 import { authClient } from "@/lib/auth-client"
 import { type KnownUser, forgetUser, lastUser } from "@/lib/storage"
 
@@ -29,6 +30,8 @@ export default function App() {
 function BudgetScreen({ user }: { user: KnownUser }) {
   const queryClient = useQueryClient()
   const { initial, version, isLoading, loadError, save, state, retry } = useBudget(user.id)
+  // Today's rate. Offline (or if the source is down) this has no data, and the last saved rate is used.
+  const rate = useQuery({ ...orpc.rate.get.queryOptions(), staleTime: 60 * 60 * 1000, retry: 1, refetchOnWindowFocus: false })
 
   if (loadError) return <Centered>Couldn't load your budget. Check your connection and reload the page.</Centered>
   if (isLoading || !initial) return <Centered>Loading your budget…</Centered>
@@ -43,6 +46,7 @@ function BudgetScreen({ user }: { user: KnownUser }) {
     <BudgetEditor
       key={version}
       initial={initial}
+      liveRate={rate.data ?? null}
       onChange={save}
       toolbar={
         <div className="flex items-center gap-2">

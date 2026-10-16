@@ -44,6 +44,13 @@ export async function smoke(baseUrl: string): Promise<boolean> {
     return `${Object.keys(spec.paths ?? {}).length} paths, docs 200`
   })
 
+  await check("exchange rate", async () => {
+    const res = await get("/api/rate")
+    const body = await res.json() as { rate?: number; date?: string }
+    expect(res.ok && !!body.rate && body.rate > 0, `returned ${res.status} ${JSON.stringify(body)}`)
+    return `฿${body.rate} per A$1 on ${body.date}`
+  })
+
   let guest = false
   await check("deployment config", async () => {
     const cfg = await (await get("/api/config")).json() as { guestSignIn: boolean }

@@ -19,6 +19,16 @@ export const contract = {
         guestSignIn: z.boolean().describe("Whether \"Continue as guest\" is offered (Previews and local dev only)"),
       })),
   },
+  rate: {
+    get: oc
+      .errors({ SERVICE_UNAVAILABLE: { message: "The exchange rate can't be fetched right now" } })
+      .meta(openapi({ method: "GET", path: "/rate", tags: ["App"], summary: "Today's exchange rate, Thai baht per Australian dollar" }))
+      .output(z.object({
+        rate: z.number().positive().describe("Thai baht per Australian dollar"),
+        date: z.iso.date().describe("The working day the rate is for"),
+        source: z.string(),
+      })),
+  },
   me: {
     get: authed
       .meta(openapi({ method: "GET", path: "/me", tags: ["Account"], summary: "The signed-in user" }))
