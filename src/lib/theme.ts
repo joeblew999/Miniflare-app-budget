@@ -1,6 +1,6 @@
 // Runtime theme: light/dark/system mode plus an accent from the generated shadcn themes.
 // Accent values come from src/themes.css (npm run theme:gen); this file only picks one.
-import themeData from "@/themes.json"
+import themeData from "@/styles/themes.json"
 
 export type Mode = "light" | "dark" | "system"
 export interface AccentTheme { name: string; preset: string; primary: string }

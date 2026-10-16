@@ -12,8 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   type Budget, type Currency, type Freq, type Kind, type Line, type Period,
-  FREQ_LABEL, FROM_MONTH, PERIOD_WORD, START, convert, fmt, load, monthlyTHB, save,
-} from "@/lib/budget"
+  FREQ_LABEL, FROM_MONTH, PERIOD_WORD, START, convert, fmt, monthlyTHB,
+} from "@shared/budget"
+import { load, save } from "@/lib/storage"
 
 const BAR_COLORS = ["var(--chart-5)", "var(--chart-3)", "var(--chart-1)", "var(--chart-4)", "var(--chart-2)"]
 

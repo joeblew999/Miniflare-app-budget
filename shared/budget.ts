@@ -1,4 +1,4 @@
-// Budget data model, conversions and browser storage.
+// Budget domain: data model and currency maths. Shared by the React app and the Worker.
 
 export type Currency = "THB" | "AUD"
 export type Freq = "day" | "week" | "month" | "quarter" | "year"
@@ -82,27 +82,4 @@ export function fmt(v: number, cur: Currency): string {
   const sign = v < 0 ? "−" : ""
   const sym = cur === "THB" ? "฿" : "A$"
   return sign + sym + Math.abs(v).toLocaleString("en-AU", { maximumFractionDigits: 0 })
-}
-
-const KEY = "baht-dollar-budget-v3"
-
-export function load(): Budget {
-  try {
-    const raw = localStorage.getItem(KEY)
-    if (raw) {
-      const s = JSON.parse(raw) as Budget
-      if (Array.isArray(s.income) && Array.isArray(s.expense) && Array.isArray(s.tags)) return s
-    }
-  } catch {
-    /* storage unavailable: fall through to starting figures */
-  }
-  return structuredClone(START)
-}
-
-export function save(b: Budget): void {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(b))
-  } catch {
-    /* ignore */
-  }
 }
