@@ -27,9 +27,19 @@ served as static assets from a Cloudflare Worker.
 
 ## Theme
 
-Colours are the shadcn CSS variables in `src/index.css`. Light/dark follows the system setting
-(`src/main.tsx` toggles the `.dark` class). To change the accent, replace the `--primary`,
-`--ring` and `--chart-*` values in both `:root` and `.dark`.
+The theme is an official shadcn preset: **`b2oDXH5AO`** — base colour neutral, theme green, chart colour green,
+Geist font, Lucide icons, nova style. Open it in the builder: https://ui.shadcn.com/create?preset=b2oDXH5AO
+
+    mise run theme:show          # what preset the project is on
+    mise run theme <code>        # switch to another preset (build one at ui.shadcn.com/create)
+
+Applying a preset rewrites the CSS variables in `src/index.css` and reinstalls the components in
+`src/components/ui/`, so don't hand-edit colours there. Light/dark follows the system setting
+(`src/main.tsx` toggles the `.dark` class).
+
+Available values (from the shadcn CLI): base colours neutral, stone, zinc, gray, mauve, olive, mist, taupe;
+themes and chart colours amber, blue, cyan, emerald, fuchsia, green, indigo, lime, orange, pink, purple,
+red, rose, sky, teal, violet, yellow, plus the base colours.
 
 ## Data
 

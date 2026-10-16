@@ -31,3 +31,13 @@ run = "npx wrangler deploy"
 description = "Add shadcn components, e.g. mise run ui:add dialog"
 depends = ["install"]
 run = "npx shadcn add"
+
+[tasks.theme]
+description = "Apply a shadcn preset, e.g. mise run theme b2oDXH5AO (build codes at ui.shadcn.com/create)"
+depends = ["install"]
+run = "npx shadcn init --preset {{arg(name=\"code\")}} --force --reinstall --yes && npx shadcn preset resolve"
+
+[tasks."theme:show"]
+description = "Show the project's current shadcn preset"
+depends = ["install"]
+run = "npx shadcn preset resolve"
