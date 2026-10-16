@@ -1,8 +1,8 @@
 // App shell: sign-in gate, then the budget loaded from (and saved to) the API.
 // Offline, the last signed-in user is used, so the app still opens; sign-in is only shown when the
 // server answers that there's no session.
-import { useEffect } from "react"
-import { useQueryClient } from "@tanstack/react-query"
+import { useEffect, useSyncExternalStore } from "react"
+import { onlineManager, useQueryClient } from "@tanstack/react-query"
 import { LogOut } from "lucide-react"
 import { BudgetEditor } from "@/components/budget-editor"
 import { SignIn } from "@/components/sign-in"
@@ -46,6 +46,7 @@ function BudgetScreen({ user }: { user: KnownUser }) {
       onChange={save}
       toolbar={
         <div className="flex items-center gap-2">
+          <ConnectionMarker />
           <SaveStatus state={state} onRetry={retry} />
           <span className="hidden text-sm text-muted-foreground sm:inline" title={user.label}>{user.label}</span>
           <Button variant="outline" size="sm" onClick={signOut}><LogOut /> Sign out</Button>
@@ -58,8 +59,19 @@ function BudgetScreen({ user }: { user: KnownUser }) {
 function SaveStatus({ state, onRetry }: { state: SaveState; onRetry: () => void }) {
   if (state === "error")
     return <Button variant="ghost" size="sm" className="text-destructive" onClick={onRetry}>Not saved. Retry</Button>
-  const text = { saved: "Saved", pending: "Unsaved changes", saving: "Saving…", offline: "Offline: saved on this device" }[state]
+  const text = { saved: "Saved", pending: "Unsaved changes", saving: "Saving…", offline: "Saved on this device" }[state]
   return <span role="status" className="text-sm text-muted-foreground">{text}</span>
+}
+
+/** Always shows the connection: a small green dot online, an amber dot and "Offline" when not. */
+function ConnectionMarker() {
+  const online = useSyncExternalStore((onChange) => onlineManager.subscribe(onChange), () => onlineManager.isOnline())
+  return (
+    <span className="flex items-center gap-1.5 text-sm text-muted-foreground" title={online ? "Online" : "Offline: edits are kept on this device and sync when you're back online"}>
+      <span aria-hidden className={`size-2 rounded-full ${online ? "bg-primary" : "bg-amber-500"}`} />
+      <span className={online ? "sr-only" : undefined}>{online ? "Online" : "Offline"}</span>
+    </span>
+  )
 }
 
 function Centered({ children }: { children: React.ReactNode }) {

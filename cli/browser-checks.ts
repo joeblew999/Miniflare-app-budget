@@ -123,7 +123,7 @@ export async function checkOffline(baseUrl: string): Promise<boolean> {
     await run.step("edit while offline", async () => {
       await context.setOffline(true)
       await rate.fill(value)
-      await page.getByText("Offline: saved on this device").waitFor(TIMEOUT)
+      await page.getByText("Saved on this device", { exact: true }).waitFor(TIMEOUT)
       return `rate ${value}, kept on this device`
     })
     await run.step("reload with no connection", async () => {
@@ -131,22 +131,25 @@ export async function checkOffline(baseUrl: string): Promise<boolean> {
       await rate.waitFor(TIMEOUT)
       const got = await rate.inputValue()
       if (got !== value) throw new Error(`expected ${value}, got ${got}`)
-      await page.getByText("Offline: saved on this device").waitFor(TIMEOUT)
-      return `app opened, still signed in, rate ${got}, shown as offline`
+      await page.getByText("Saved on this device", { exact: true }).waitFor(TIMEOUT)
+      await page.getByText("Offline", { exact: true }).waitFor(TIMEOUT)
+      return `app opened, still signed in, rate ${got}, marked offline`
     })
     await run.step("reconnect and sync", async () => {
       await context.setOffline(false)
       await page.getByText("Saved", { exact: true }).waitFor(TIMEOUT)
+      await page.getByText("Offline", { exact: true }).waitFor({ state: "hidden", ...TIMEOUT })
       const res = await context.request.get(`${base}/api/budget`, { headers: { origin: base } })
       const body = await res.json() as { budget?: { rate: number } }
       if (String(body.budget?.rate) !== value) throw new Error(`server has rate ${body.budget?.rate}, expected ${value}`)
       return `server has rate ${value}`
     })
     await run.step("a newer save on another device wins", async () => {
-      const mine = randomRate(), theirs = randomRate()
+      const mine = randomRate()
+      const theirs = String((Number(mine) % 90) + 10 + 1) // always different from mine
       await context.setOffline(true)
       await rate.fill(mine) // edited first, on this device, offline
-      await page.getByText("Offline: saved on this device").waitFor(TIMEOUT)
+      await page.getByText("Saved on this device", { exact: true }).waitFor(TIMEOUT)
       // Another device, same account, saves later while this one is still offline.
       const other = await browser.newContext({ storageState: await context.storageState() })
       const current = await (await other.request.get(`${base}/api/budget`, { headers: { origin: base } })).json() as { budget: object }
