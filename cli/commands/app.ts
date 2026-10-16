@@ -40,7 +40,7 @@ export function register(program: Command): void {
       if (opts.check && !(await checkArtifact(file))) process.exit(1)
     })
 
-  app.command("smoke").description("Smoke-test a running copy of the app over HTTP (production: read-only; Previews and local: full guest round trip)")
+  app.command("smoke").description("Smoke-test a running copy of the app over HTTP (read-only, plus a full guest round trip where guest sign-in is on)")
     .option("--url <url>", "base URL of the app", "http://localhost:5173")
     .option("--offline", "also check offline use in a browser: edit offline, reload, reconnect (Previews and app:preview only)")
     .action(async (opts: { url: string; offline?: boolean }) => {
@@ -112,8 +112,8 @@ export function artifact(): string {
 }
 
 // Smoke test against any running copy of the app (local, a Preview, or production), over HTTP.
-// Read-only checks everywhere. Where guest sign-in is on (Previews, local dev) it also does a full
-// sign-in → save → load round trip as a throwaway guest, so production data is never written.
+// Read-only checks everywhere. Where guest sign-in is on it also does a full
+// sign-in → save → load round trip as a throwaway guest, so no real account is touched.
 
 interface Check { name: string; ok: boolean; detail: string }
 
@@ -168,7 +168,7 @@ export async function smoke(baseUrl: string): Promise<boolean> {
   await check("deployment config", async () => {
     const cfg = await (await get("/api/config")).json() as { guestSignIn: boolean }
     guest = cfg.guestSignIn
-    return `guest sign-in ${guest ? "on (Preview or local)" : "off (production)"}`
+    return `guest sign-in ${guest ? "on" : "off"}`
   })
 
   if (guest) {
@@ -198,7 +198,7 @@ export async function smoke(baseUrl: string): Promise<boolean> {
     await check("guest sign-in is closed", async () => {
       const res = await get("/api/auth/sign-in/anonymous", { method: "POST", body: "{}" })
       expect(res.status === 404, `expected 404, got ${res.status}`)
-      return "404, as it should be in production"
+      return "404, as it should be with guest sign-in off"
     })
   }
 
@@ -214,7 +214,7 @@ export async function smoke(baseUrl: string): Promise<boolean> {
 //   checkOffline: a running copy of the app (local preview or a Preview) going offline. Edit while offline,
 //     reload with no connection (the app must still open, signed in, with the edit), reconnect, and the server has it;
 //     then an offline edit loses to a later save from another device.
-// Only for copies where guest sign-in is on, so production data is never touched.
+// Only for copies where guest sign-in is on, so no real account is touched.
 
 async function launch(): Promise<Browser> {
   try {

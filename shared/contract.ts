@@ -16,7 +16,7 @@ export const contract = {
     get: oc
       .meta(openapi({ method: "GET", path: "/config", tags: ["App"], summary: "Public settings for this deployment" }))
       .output(z.object({
-        guestSignIn: z.boolean().describe("Whether \"Continue as guest\" is offered (Previews and local dev only)"),
+        guestSignIn: z.boolean().describe("Whether \"Continue as guest\" is offered"),
       })),
   },
   rate: {

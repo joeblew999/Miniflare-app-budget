@@ -11,7 +11,8 @@ export default defineConfig(async () => {
       cloudflareTest({
         wrangler: { configPath: "./wrangler.jsonc" },
         miniflare: {
-          bindings: { TEST_MIGRATIONS: migrations },
+          // Guest sign-in off, so the tests cover the switch; the localhost test covers it on.
+          bindings: { TEST_MIGRATIONS: migrations, GUEST_SIGN_IN: "false" },
         },
       }),
     ],
