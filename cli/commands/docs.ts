@@ -1,10 +1,10 @@
 // Keeps the docs in step with the commands, so they can't drift apart:
-//   - the command tables in README.md and CLAUDE.md are generated from package.json (goals, Wireit
-//     dependencies) and the CLI's own descriptions, between <!-- generated:… --> markers;
+//   - docs/commands.md, the one list of commands, is generated from package.json (goals, Wireit
+//     dependencies) and the CLI's own descriptions. README.md links to it; CLAUDE.md imports it.
 //   - every command mentioned anywhere in the repo (as an npm script, a `npm run cli` call, or a noun:verb name in backticks) must exist.
 // Runs as a step of app:verify.
 import type { Command } from "commander"
-import { readFileSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { capture, fail, root } from "../run.ts"
 import { createProgram } from "../program.ts"
@@ -13,7 +13,7 @@ interface Pkg { scripts: Record<string, string>; wireit: Record<string, { comman
 
 export function register(program: Command): void {
   const docs = program.command("docs").description("The docs (README.md, CLAUDE.md)")
-  docs.command("gen").description("Regenerate the command tables in the docs, and fail on any mention of a command that doesn't exist")
+  docs.command("gen").description("Write docs/commands.md from package.json and the CLI, and fail on any mention of a command that doesn't exist")
     .action(gen)
 }
 
@@ -27,6 +27,15 @@ function cliCommands(): Map<string, Command> {
 /** The CLI command a goal or step runs ("app dev" for `node cli/main.ts app dev`), if any. */
 const cliPath = (command?: string) => command?.match(/^node cli\/main\.ts (\S+ \S+)/)?.[1]
 
+/** How to pass a command's arguments and options after `--`. */
+function argsOf(cmd?: Command): string {
+  const list = [
+    ...cmd?.registeredArguments.map((a) => (a.required ? `<${a.name()}${a.variadic ? "..." : ""}>` : `[${a.name()}]`)) ?? [],
+    ...cmd?.options.map((o) => `[${o.flags.split(/,\s*/).pop()}]`) ?? [],
+  ]
+  return list.length ? ` -- ${list.join(" ")}` : ""
+}
+
 function gen(): void {
   const pkg = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")) as Pkg
   const commands = cliCommands()
@@ -39,63 +48,52 @@ function gen(): void {
     const deps = pkg.wireit[name]?.dependencies ?? []
     return deps.length ? `Runs ${deps.join(", ")}` : ""
   }
-  const args = (name: string) => {
-    const cmd = commands.get(cliPath(pkg.wireit[name]?.command) ?? "")
-    const list = [
-      ...cmd?.registeredArguments.map((a) => (a.required ? `<${a.name()}${a.variadic ? "..." : ""}>` : `[${a.name()}]`)) ?? [],
-      ...cmd?.options.map((o) => `[${o.flags.split(/,\s*/).pop()}]`) ?? [],
-    ]
-    return list.length ? ` -- ${list.join(" ")}` : ""
-  }
+  const args = (name: string) => argsOf(commands.get(cliPath(pkg.wireit[name]?.command) ?? ""))
   const runsFirst = (name: string) => (pkg.wireit[name]?.dependencies ?? []).map((d) => `\`${d}\``).join(", ")
   const used = new Set([...goals, ...steps].map((n) => cliPath(pkg.wireit[n]?.command)))
   const others = [...commands.keys()].filter((c) => !used.has(c))
 
-  const claudeTable = [
+  const md = [
+    "# Commands",
+    "",
+    "Generated from `package.json` and `cli/` by the `docs:gen` step of `npm run app:verify`. Don't edit this file:",
+    "change a command's description in `cli/commands/<noun>.ts`, or its dependencies in `package.json` → `wireit`.",
+    "",
+    "## Goals",
+    "",
+    "Run with `npm run <goal>`. Wireit runs what each one needs first, in order, and skips anything already up to date.",
+    "",
     "| Goal | Runs first | What it does |",
     "|---|---|---|",
     ...goals.map((g) => `| \`${g}${args(g)}\` | ${runsFirst(g)} | ${describe(g)} |`),
     "",
-    "**Steps** (only in the `wireit` section, run as part of a goal):",
+    "## Steps",
+    "",
+    "Only in the `wireit` section of `package.json`: they run as part of a goal.",
     "",
     ...steps.map((s) => `- \`${s}\`${runsFirst(s) ? ` (after ${runsFirst(s)})` : ""}: ${describe(s)}`),
     "",
-    "**Other commands**, run on their own with `npm run cli -- <noun> <verb>`:",
+    "## Other commands",
     "",
-    ...others.map((c) => `- \`${c}\`: ${commands.get(c)!.description()}`),
+    "Any command, including a single step without what it depends on, runs on its own with `npm run cli -- <noun> <verb>`.",
+    "These are only available that way:",
+    "",
+    ...others.map((c) => `- \`${c}${argsOf(commands.get(c)!)}\`: ${commands.get(c)!.description()}`),
+    "",
   ].join("\n")
 
-  const readme = [
-    "```",
-    ...goals.map((g) => `npm run ${g}${args(g)}`.padEnd(36) + ` # ${describe(g)}`),
-    "```",
-    "",
-    "Single steps or other commands, without what they depend on: `npm run cli -- <noun> <verb>`,",
-    `e.g. ${others.slice(0, 3).map((c) => `\`npm run cli -- ${c}\``).join(", ")}. \`npm run cli -- --help\` lists them all.`,
-  ].join("\n")
-
-  replaceBlock("CLAUDE.md", "goals", claudeTable)
-  replaceBlock("README.md", "commands", readme)
-  checkReferences(new Set([...goals, ...steps]), new Set(pkg.scripts ? Object.keys(pkg.scripts) : []), commands)
-}
-
-/** Replace the text between <!-- generated:NAME --> and <!-- /generated:NAME --> in a doc. */
-function replaceBlock(file: string, name: string, body: string): void {
-  const full = path.join(root, file)
-  const text = readFileSync(full, "utf8")
-  const start = `<!-- generated:${name} (npm run app:verify writes this; edit package.json or cli/ instead) -->`
-  const end = `<!-- /generated:${name} -->`
-  const re = new RegExp(`<!-- generated:${name}[^>]*-->[\\s\\S]*?${end.replace(/[/]/g, "\\/")}`)
-  if (!re.test(text)) fail(`${file} has no generated:${name} block`)
-  const next = text.replace(re, `${start}\n${body}\n${end}`)
-  if (next !== text) { writeFileSync(full, next); console.log(`Updated the ${name} block in ${file}`) }
+  const file = path.join(root, "docs/commands.md")
+  mkdirSync(path.dirname(file), { recursive: true })
+  const before = existsSync(file) ? readFileSync(file, "utf8") : ""
+  if (before !== md) { writeFileSync(file, md); console.log("Updated docs/commands.md") }
+  checkReferences(new Set([...goals, ...steps]), new Set(Object.keys(pkg.scripts)), commands)
 }
 
 /** Fail if any tracked file mentions a command that doesn't exist. Plans are skipped: they describe commands not built yet. */
 function checkReferences(known: Set<string>, scripts: Set<string>, commands: Map<string, Command>): void {
   const nouns = new Set([...commands.keys()].map((c) => c.split(" ")[0]))
   const files = capture("git", ["ls-files", "-co", "--exclude-standard"]).split("\n")
-    .filter((f) => /\.(md|ts|tsx|css|html|json|jsonc|toml)$/.test(f) && !f.startsWith("plans/") && f !== "package-lock.json" && !f.startsWith(".claude/"))
+    .filter((f) => /\.(md|ts|tsx|css|html|json|jsonc|toml)$/.test(f) && !f.startsWith("plans/") && f !== "docs/commands.md" && f !== "package-lock.json" && !f.startsWith(".claude/"))
   const problems: string[] = []
   for (const file of files) {
     const text = readFileSync(path.join(root, file), "utf8")

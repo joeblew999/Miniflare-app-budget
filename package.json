@@ -100,9 +100,12 @@
         "*.toml",
         "!plans/**",
         "!node_modules/**",
-        "!dist/**"
+        "!dist/**",
+        "!docs/commands.md"
       ],
-      "output": []
+      "output": [
+        "docs/commands.md"
+      ]
     },
     "app:setup": {
       "command": "node cli/main.ts app setup"
