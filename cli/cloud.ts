@@ -177,12 +177,21 @@ export async function build(opts: { branch?: string }): Promise<void> {
   console.log(`Build succeeded.${urls.length ? "\n" + urls.map((u) => `  ${u}`).join("\n") : ""}`)
 }
 
+/** Production builds and every Preview's builds, newest first. */
+async function allBuilds(tag: string): Promise<{ builds: Build[]; previews: Preview[] }> {
+  const production = await cf<Build[]>("GET", `/accounts/:account/builds/workers/${tag}/builds`)
+  const previews = await cf<Preview[]>("GET", `/accounts/:account/builds/workers/${tag}/previews`).catch(() => [] as Preview[])
+  const perPreview = await Promise.all(previews.map((p) =>
+    cf<Build[]>("GET", `/accounts/:account/builds/workers/${tag}/previews/${p.preview_id}/builds`).catch(() => [] as Build[])))
+  const builds = [...production, ...perPreview.flat()].sort((a, b) => b.created_on.localeCompare(a.created_on))
+  return { builds, previews }
+}
+
 export async function status(): Promise<void> {
   const name = workerName()
   const tag = await requireTag()
   const sub = await subdomain()
-  const builds = await cf<Build[]>("GET", `/accounts/:account/builds/workers/${tag}/builds`)
-  const previews = await cf<Preview[]>("GET", `/accounts/:account/builds/workers/${tag}/previews`).catch(() => [] as Preview[])
+  const { builds, previews } = await allBuilds(tag)
   console.log(`Production  https://${name}.${sub}.workers.dev`)
   for (const p of previews) console.log(`Preview     https://${p.branch.toLowerCase().replace(/[^a-z0-9-]/g, "-")}-${name}.${sub}.workers.dev  (${p.branch})`)
   console.log("\nRecent builds")
@@ -195,8 +204,7 @@ export async function status(): Promise<void> {
 export async function logs(uuid?: string): Promise<void> {
   let id = uuid
   if (!id) {
-    const tag = await requireTag()
-    const builds = await cf<Build[]>("GET", `/accounts/:account/builds/workers/${tag}/builds`)
+    const { builds } = await allBuilds(await requireTag())
     id = builds[0]?.build_uuid
     if (!id) fail("No builds yet.")
   }
