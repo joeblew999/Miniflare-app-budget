@@ -22,7 +22,7 @@ Conventions for working in this repo: Baht & Dollar Budget, a contract-first app
 | File | Holds | Never holds |
 |---|---|---|
 | `mise.toml` | Tool versions only (`[tools]`: node, fnox from its GitHub release) | Tasks, env vars, secrets |
-| `package.json` | Every command, as `noun:verb` npm scripts that call `cli/` | Secrets, logic |
+| `package.json` | The goals you run, as `noun:verb` npm scripts, and the order of steps (Wireit `dependencies`, `files`) | Secrets, code |
 | `fnox.toml` | Names of secrets and env vars the project needs | Real secret values |
 
 - Each person keeps their own secret values in their own store (keychain, 1Password, age…), wired up in `fnox.local.toml`, which is gitignored. Values that reach Cloudflare belong under `[profiles.production]`.
@@ -30,27 +30,42 @@ Conventions for working in this repo: Baht & Dollar Budget, a contract-first app
 - The `BETTER_AUTH_SECRET` default in `fnox.toml` is for local dev and tests only. `worker:ci` (used by `worker:deploy` too) refuses to deploy with it.
 - Do not add `[tasks]` or `[env]` to `mise.toml`, and do not add `.env` or `.dev.vars` files.
 
-## Commands: noun:verb
+## Commands: goals and steps
 
-Every command is a subcommand of the project CLI, a TypeScript program in `cli/` that Node runs directly (type stripping, so no build step and no tsx). Each one is exposed as an npm script named `noun:verb` that calls `node cli/main.ts <noun> <verb>`. The noun is the thing being acted on, like a tag. Use the existing nouns before inventing a new one.
+Every command is a subcommand of the project CLI, a TypeScript program in `cli/` that Node runs directly (type stripping, so no build step and no tsx). The noun is the thing being acted on, like a tag; use the existing nouns before inventing a new one.
 
-| Noun | Scripts | What it acts on |
+**Nobody remembers an order.** [Wireit](https://github.com/google/wireit) runs the commands: each one declares in `package.json` → `wireit` what it needs first (`dependencies`) and what it reads (`files`). Run a goal and Wireit runs its steps first, in order, each once, and skips any step whose files haven't changed since it last passed. Each CLI command does one thing; the order lives only in the Wireit config.
+
+**Goals** are the npm scripts you run (`npm run <goal>`):
+
+| Goal | Runs first | What it does |
 |---|---|---|
-| `app` | `app:dev`, `app:check`, `app:build`, `app:preview`, `app:lint`, `app:artifact`, `app:smoke` | The whole app: React front end and Worker, built together by Vite |
-| `worker` | `worker:setup`, `worker:build`, `worker:status`, `worker:logs`, `worker:types`, `worker:deploy`, `worker:ci`, `worker:preview` | The Cloudflare Worker: Cloudflare setup and builds (REST API), plus wrangler steps |
-| `db` | `db:gen`, `db:migrate` | The D1 database (Drizzle schema, migrations) |
-| `test` | `test:run`, `test:watch` | Vitest, inside workerd |
-| `ui` | `ui:add` | shadcn components in `src/components/ui/` |
-| `theme` | `theme:show`, `theme:set`, `theme:gen` | The shadcn preset and accent themes |
-| `env` | `env:list`, `env:check` | Secrets and env vars (fnox) |
+| `app:setup` | | Set up this machine: VS Code extensions from `.vscode/extensions.json`, a browser for the checks |
+| `app:dev` | `db:migrate` | Dev server, http://localhost:5173 |
+| `app:verify` | `app:check`, `test:run`, `app:lint` | Everything that must pass before a push |
+| `app:artifact` | `app:check` | One-file build for a Claude artifact, checked in a browser |
+| `app:smoke` | | Check a running copy (`-- --url <url> [--offline]`) |
+| `app:preview` | `app:build`, `db:migrate` | The production build, locally, http://localhost:4173 |
+| `app:build` | `app:check` | Build to `dist/` (Workers Builds' build command) |
+| `worker:ci`, `worker:preview` | | Workers Builds' deploy and preview commands (run after `app:build`) |
+| `worker:deploy` | `app:verify`, `app:build` | Deploy from your machine (fnox production profile) |
+| `worker:setup`, `worker:build`, `worker:status`, `worker:logs` | | Cloudflare setup, builds, URLs, logs |
+| `db:gen` | | New migration after editing `worker/db/schema.ts` (`-- <name>`) |
+| `ui:add` | | Add shadcn components (`-- dialog`) |
+| `theme:set` | | Switch the shadcn preset, then regenerate the accent themes |
+
+**Steps** are only in the `wireit` section, not in `scripts`, so they run as part of a goal: `worker:types` (`app:check` and `test:run` need it), `app:check`, `app:lint`, `test:run`, `db:migrate` (local; always runs, it's idempotent). Any command can still be run on its own, without its steps, with `npm run cli -- <noun> <verb>`, e.g. `npm run cli -- test watch`, `npm run cli -- db migrate --remote`, `npm run cli -- env check`. `npm run cli -- --help` lists them all.
 
 Rules:
+- Never write "run X, then Y" in docs or code. If a command needs another first, add it to its Wireit `dependencies`. Give a step `files` (and `"output": []` if it writes nothing) so it's skipped when nothing changed; leave `files` off a step that must always run.
+- A CLI command does one thing and doesn't call other commands. Chaining is Wireit's job.
 - No `scripts/` folder and no loose `.js`/`.mjs` tooling. Tooling is a command in `cli/commands/<noun>.ts`, registered in `cli/main.ts`.
-- No bare script names (`dev`, `build`, `start`). Always `noun:verb`, and the npm script must match the CLI path (`app:build` → `cli/main.ts app build`).
-- Reuse short verbs across nouns: `dev`, `check`, `build`, `preview`, `lint`, `smoke`, `setup`, `status`, `logs`, `types`, `deploy`, `ci`, `gen`, `migrate`, `run`, `watch`, `add`, `show`, `set`, `list`, `artifact`.
-- A new command goes in this table and in the README in the same change.
+- Script names are `noun:verb` and match the CLI path (`app:build` → `cli/main.ts app build`). No bare names (`dev`, `build`, `start`).
+- Reuse short verbs across nouns: `dev`, `check`, `verify`, `build`, `preview`, `lint`, `smoke`, `setup`, `status`, `logs`, `types`, `deploy`, `ci`, `gen`, `migrate`, `run`, `watch`, `add`, `show`, `set`, `list`, `artifact`.
+- A new goal goes in the table above and in the README in the same change.
 - Every command prints timings to stderr: each tool it runs (tsc, vite, wrangler…) and its total, including on failure. They come from Commander's `preAction` hook in `cli/main.ts` and `logTiming` in `cli/run.ts`. Set `BUDGET_TIMINGS=0` to hide them.
-- Pass arguments after `--`, e.g. `npm run db:gen -- add-notes`, `npm run ui:add -- dialog`, `npm run db:migrate -- --remote`. `npm run cli -- --help` lists everything.
+- Pass arguments after `--`: `npm run db:gen -- add-notes`, `npm run app:smoke -- --url <url>`.
+- The Wireit extension for VS Code (`google.wireit`, in `.vscode/extensions.json`) checks the config as you edit it. `npm run app:setup` installs it.
 
 ## Folder layout
 
@@ -68,7 +83,7 @@ worker/         Cloudflare Worker
   budget-store.ts   D1 reads and writes for a budget
   db/               Drizzle schema and client
   test/             Vitest tests (run in workerd)
-migrations/     SQL migrations (generated by db:gen, applied by db:migrate). Never edit applied ones.
+migrations/     SQL migrations (generated by db:gen, applied by the db:migrate step and by deploys). Never edit applied ones.
 src/            React app
   App.tsx           sign-in gate, then the budget
   components/       app components; components/ui/ is managed by the shadcn CLI
@@ -81,22 +96,22 @@ plans/          plans, named YYYY-MM-DD-NN-slug.md with the file's own name on t
 
 - `shared/` must stay runtime-neutral, with no DOM, no `localStorage`, no Worker bindings and no Node APIs. The type-check enforces this, because `shared/` is compiled under both the app and the Worker tsconfigs.
 - TypeScript is strict everywhere, with one tsconfig per runtime: `tsconfig.app.json` (src + shared, DOM), `tsconfig.worker.json` (worker + shared, Workers types), and `tsconfig.node.json` (configs + cli, Node). `npm run app:check` checks all three.
-- `worker-configuration.d.ts` is generated by `npm run worker:types` (vars typed as `string`, because Previews override them). Re-run it after changing `wrangler.jsonc`.
+- `worker-configuration.d.ts` is generated by the `worker:types` step (vars typed as `string`, because Previews override them). It regenerates by itself when `wrangler.jsonc` changes.
 
 ## Changing the API
 
 1. Change the Zod schema or the contract in `shared/`. The contract is the source of truth, and every procedure needs `.output` and an `openapi()` route.
 2. Implement it in `worker/router.ts` (and `worker/budget-store.ts` for data). TypeScript fails until the implementation matches the contract.
-3. Database change: edit `worker/db/schema.ts`, then run `npm run db:gen -- <name>` and `npm run db:migrate`.
+3. Database change: edit `worker/db/schema.ts`, then run `npm run db:gen -- <name>`. `app:dev` applies it locally.
 4. Use it in the app through `orpc` from `src/lib/api.ts` (`orpc.x.y.queryOptions()` / `.mutationOptions()`).
-5. Add or extend a test in `worker/test/`, then run `npm run test:run` and `npm run app:check`.
+5. Add or extend a test in `worker/test/`, then run `npm run app:verify`.
 
 Procedures that need a signed-in user use the `authed` base in the contract (it declares `UNAUTHORIZED`) and `authed` in the router (the `requireUser` middleware). Every query filters by `context.user.id`.
 
 ## Theme (shadcn)
 
-- The base theme is an official shadcn preset (see `theme:show`). Change it with `theme:set`. Never hand-edit colour variables in `src/styles/index.css`.
-- `src/styles/themes.css` and `src/styles/themes.json` are generated by `theme:gen` (one block per official accent theme, built by running `shadcn init --preset` for each). Don't edit them by hand. Re-run `theme:gen` after `theme:set`.
+- The base theme is an official shadcn preset (`npm run cli -- theme show`). Change it with `theme:set`. Never hand-edit colour variables in `src/styles/index.css`.
+- `src/styles/themes.css` and `src/styles/themes.json` are generated by `theme:set` (or on their own with `npm run cli -- theme gen`): one block per official accent theme, built by running `shadcn init --preset` for each. Don't edit them by hand.
 - Runtime switching (light/dark/system plus accent) lives in `src/lib/theme.ts` and `src/components/theme-switcher.tsx`, and uses `.dark` and `<html data-accent="…">`. The boot script in `index.html` mirrors `applyTheme()` so there's no flash. Keep the two in step.
 - `src/components/ui/` is managed by the shadcn CLI (`ui:add`, `theme:set`) and excluded from lint. Put app components in `src/components/`.
 
@@ -139,4 +154,4 @@ The app works offline. Change these parts together:
 ## Git
 
 - Work on a branch and open a PR. Never push to `main`. Keep the PR mergeable, because the owner's local clone tracks the same code.
-- Before pushing, run `npm run app:check`, `npm run test:run` and `npm run app:lint`.
+- Before pushing, run `npm run app:verify`.

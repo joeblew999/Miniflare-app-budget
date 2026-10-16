@@ -20,6 +20,11 @@ async function launch(): Promise<Browser> {
   }
 }
 
+/** Is there a browser the checks can use? */
+export async function hasBrowser(): Promise<boolean> {
+  try { await (await launch()).close(); return true } catch { return false }
+}
+
 interface Step { name: string; ok: boolean; detail: string }
 
 /** Runs named steps in order, stopping at the first failure, and prints the results. */

@@ -16,9 +16,12 @@ export function register(program: Command): void {
   theme.command("show").description("Show the project's current shadcn preset")
     .action(() => run("shadcn", ["preset", "resolve"]))
 
-  theme.command("set").description("Switch the base preset (build codes at ui.shadcn.com/create). Run theme gen after.")
+  theme.command("set").description("Switch the base preset (build codes at ui.shadcn.com/create), then regenerate the accent themes from it")
     .argument("<code>", "shadcn preset code")
-    .action((code: string) => run("shadcn", ["init", "--preset", code, "--force", "--reinstall", "--yes"]))
+    .action((code: string) => {
+      run("shadcn", ["init", "--preset", code, "--force", "--reinstall", "--yes"])
+      generate()
+    })
 
   theme.command("gen").description("Regenerate src/styles/themes.css and themes.json from shadcn presets (~20s per theme)")
     .option("--json-only", "only rebuild themes.json from the existing themes.css")
