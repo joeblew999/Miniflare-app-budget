@@ -20,8 +20,13 @@
     "worker:status": "wireit",
     "worker:logs": "wireit",
     "db:gen": "wireit",
+    "test:watch": "wireit",
     "ui:add": "wireit",
-    "theme:set": "wireit"
+    "theme:show": "wireit",
+    "theme:set": "wireit",
+    "theme:gen": "wireit",
+    "env:list": "wireit",
+    "env:check": "wireit"
   },
   "wireit": {
     "worker:types": {
@@ -179,11 +184,30 @@
     "db:gen": {
       "command": "node cli/main.ts db gen"
     },
+    "test:watch": {
+      "command": "node cli/main.ts test watch",
+      "service": true,
+      "dependencies": [
+        "worker:types"
+      ]
+    },
     "ui:add": {
       "command": "node cli/main.ts ui add"
     },
+    "theme:show": {
+      "command": "node cli/main.ts theme show"
+    },
     "theme:set": {
       "command": "node cli/main.ts theme set"
+    },
+    "theme:gen": {
+      "command": "node cli/main.ts theme gen"
+    },
+    "env:list": {
+      "command": "node cli/main.ts env list"
+    },
+    "env:check": {
+      "command": "node cli/main.ts env check"
     }
   },
   "dependencies": {

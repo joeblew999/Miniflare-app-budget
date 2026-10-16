@@ -51,7 +51,9 @@ function gen(): void {
   const args = (name: string) => argsOf(commands.get(cliPath(pkg.wireit[name]?.command) ?? ""))
   const runsFirst = (name: string) => (pkg.wireit[name]?.dependencies ?? []).map((d) => `\`${d}\``).join(", ")
   const used = new Set([...goals, ...steps].map((n) => cliPath(pkg.wireit[n]?.command)))
-  const others = [...commands.keys()].filter((c) => !used.has(c))
+  const unwired = [...commands.keys()].filter((c) => !used.has(c))
+  if (unwired.length)
+    fail(`Every CLI command must be a goal (scripts and wireit) or a step (wireit only) in package.json. Not wired in:\n  ${unwired.join("\n  ")}`)
 
   const md = [
     "# Commands",
@@ -73,12 +75,7 @@ function gen(): void {
     "",
     ...steps.map((s) => `- \`${s}\`${runsFirst(s) ? ` (after ${runsFirst(s)})` : ""}: ${describe(s)}`),
     "",
-    "## Other commands",
-    "",
-    "Any command, including a single step without what it depends on, runs on its own with `npm run cli -- <noun> <verb>`.",
-    "These are only available that way:",
-    "",
-    ...others.map((c) => `- \`${c}${argsOf(commands.get(c)!)}\`: ${commands.get(c)!.description()}`),
+    "Any goal or step also runs on its own, without what it depends on, with `npm run cli -- <noun> <verb>`.",
     "",
   ].join("\n")
 

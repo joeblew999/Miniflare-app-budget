@@ -24,8 +24,13 @@ Run with `npm run <goal>`. Wireit runs what each one needs first, in order, and 
 | `worker:status` |  | Show the production and Preview URLs and the latest builds |
 | `worker:logs -- [build-uuid]` |  | Print a build's log (the latest build by default) |
 | `db:gen -- <name>` |  | Write a SQL migration for changes to worker/db/schema.ts |
+| `test:watch` | `worker:types` | Re-run tests on change |
 | `ui:add -- <components...>` |  | Add shadcn components, e.g. ui add dialog sheet |
+| `theme:show` |  | Show the project's current shadcn preset |
 | `theme:set -- <code>` |  | Switch the base preset (build codes at ui.shadcn.com/create), then regenerate the accent themes from it |
+| `theme:gen -- [--json-only]` |  | Regenerate src/styles/themes.css and themes.json from shadcn presets (~20s per theme) |
+| `env:list` |  | List the secrets declared in fnox.toml |
+| `env:check` |  | Check every secret has a value in your store |
 
 ## Steps
 
@@ -38,13 +43,4 @@ Only in the `wireit` section of `package.json`: they run as part of a goal.
 - `db:migrate`: Apply pending migrations (local by default)
 - `docs:gen` (after `worker:types`): Write docs/commands.md from package.json and the CLI, and fail on any mention of a command that doesn't exist
 
-## Other commands
-
-Any command, including a single step without what it depends on, runs on its own with `npm run cli -- <noun> <verb>`.
-These are only available that way:
-
-- `test watch`: Re-run tests on change
-- `theme show`: Show the project's current shadcn preset
-- `theme gen -- [--json-only]`: Regenerate src/styles/themes.css and themes.json from shadcn presets (~20s per theme)
-- `env list`: List the secrets declared in fnox.toml
-- `env check`: Check every secret has a value in your store
+Any goal or step also runs on its own, without what it depends on, with `npm run cli -- <noun> <verb>`.
