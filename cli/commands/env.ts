@@ -200,7 +200,7 @@ async function setup(opts: SetupOptions): Promise<void> {
 
   const missing = await missingPermissions(token, account)
   if (missing.length)
-    fail(`The Cloudflare token is missing: ${missing.join(", ")}. In Cloudflare: My Profile > API Tokens > edit "${EVERYDAY.name}", add them and save, then run \`npm run env:setup\` again.`)
+    fail(`The Cloudflare token is missing: ${missing.join(", ")}. Edit "${EVERYDAY.name}" at https://dash.cloudflare.com/profile/api-tokens, add them and save, then run \`npm run env:setup\` again.`)
   console.log(`This machine: Cloudflare token and account ${account}, with every permission it needs.`)
 
   await setupAgents(account, opts)
