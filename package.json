@@ -243,7 +243,6 @@
         "*.html",
         "*.jsonc",
         "*.toml",
-        "!plans/**",
         "!node_modules/**",
         "!dist/**",
         "!docs/commands.md"
