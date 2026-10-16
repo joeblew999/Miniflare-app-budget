@@ -1,0 +1,95 @@
+{
+  "default": "green",
+  "themes": [
+    {
+      "name": "neutral",
+      "preset": "b2fA",
+      "primary": "oklch(0.205 0 0)"
+    },
+    {
+      "name": "amber",
+      "preset": "b1FQgLORU",
+      "primary": "oklch(0.555 0.163 48.998)"
+    },
+    {
+      "name": "blue",
+      "preset": "b1YmqvjO4",
+      "primary": "oklch(0.488 0.243 264.376)"
+    },
+    {
+      "name": "cyan",
+      "preset": "b1s91W4Ke",
+      "primary": "oklch(0.52 0.105 223.128)"
+    },
+    {
+      "name": "emerald",
+      "preset": "b2BVC6PHE",
+      "primary": "oklch(0.508 0.118 165.612)"
+    },
+    {
+      "name": "fuchsia",
+      "preset": "b2UrMgkDo",
+      "primary": "oklch(0.518 0.253 323.949)"
+    },
+    {
+      "name": "green",
+      "preset": "b2oDXH5AO",
+      "primary": "oklch(0.527 0.154 150.069)"
+    },
+    {
+      "name": "indigo",
+      "preset": "b37ZhrQ6y",
+      "primary": "oklch(0.457 0.24 277.023)"
+    },
+    {
+      "name": "lime",
+      "preset": "b3QvsRl3Y",
+      "primary": "oklch(0.841 0.238 128.85)"
+    },
+    {
+      "name": "orange",
+      "preset": "b3kI32608",
+      "primary": "oklch(0.553 0.195 38.402)"
+    },
+    {
+      "name": "pink",
+      "preset": "b43eDcQwi",
+      "primary": "oklch(0.525 0.223 3.958)"
+    },
+    {
+      "name": "purple",
+      "preset": "b4N0OCltI",
+      "primary": "oklch(0.496 0.265 301.924)"
+    },
+    {
+      "name": "red",
+      "preset": "b4gMYn6ps",
+      "primary": "oklch(0.505 0.213 27.518)"
+    },
+    {
+      "name": "rose",
+      "preset": "b4zijNRmS",
+      "primary": "oklch(0.514 0.222 16.935)"
+    },
+    {
+      "name": "sky",
+      "preset": "b5J4txmj2",
+      "primary": "oklch(0.5 0.134 242.749)"
+    },
+    {
+      "name": "teal",
+      "preset": "b5cR4Y7fc",
+      "primary": "oklch(0.511 0.096 186.391)"
+    },
+    {
+      "name": "violet",
+      "preset": "b5vnF8ScC",
+      "primary": "oklch(0.491 0.27 292.581)"
+    },
+    {
+      "name": "yellow",
+      "preset": "b6F9PinYm",
+      "primary": "oklch(0.852 0.199 91.936)"
+    }
+  ]
+}

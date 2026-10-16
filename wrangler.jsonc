@@ -1,0 +1,40 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "baht-dollar-budget",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    // API routes go to the Worker; everything else is the React app
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      // No database_id: wrangler creates the database on the first deploy and links it
+      // (automatic resource provisioning), so this file holds no account-specific ids.
+      "database_name": "baht-dollar-budget",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // "Continue as guest" (Better Auth anonymous sign-in). Off in production, on in Previews.
+  // Local dev (localhost) always allows it; see worker/auth.ts.
+  "vars": { "GUEST_SIGN_IN": "false" },
+  // Previews (one per branch/PR) use a shared staging database, never production.
+  // Migrations for it run from wrangler.preview-migrations.jsonc (npm run worker:preview).
+  "previews": {
+    "vars": { "GUEST_SIGN_IN": "true" },
+    "d1_databases": [
+      {
+        "binding": "DB",
+        "database_name": "baht-dollar-budget-preview",
+        "database_id": "ad9fc1e5-49ae-403b-9ae4-e6373c876ae9"
+      }
+    ]
+  },
+  // Values come from fnox (see fnox.toml); never put them in this file
+  "secrets": { "required": ["BETTER_AUTH_SECRET"] },
+  "observability": { "enabled": true }
+}

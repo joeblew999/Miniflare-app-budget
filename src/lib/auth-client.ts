@@ -1,0 +1,5 @@
+// Better Auth client. Same origin as the app; the Worker serves auth under /api/auth.
+import { createAuthClient } from "better-auth/react"
+import { anonymousClient } from "better-auth/client/plugins"
+
+export const authClient = createAuthClient({ basePath: "/api/auth", plugins: [anonymousClient()] })

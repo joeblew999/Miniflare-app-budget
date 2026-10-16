@@ -1,0 +1,22 @@
+# Dependencies and build output
+node_modules
+dist
+dist-ssr
+.wrangler
+
+# Local-only config and secrets (fnox.local.toml holds each person's own provider setup)
+*.local
+fnox.local.toml
+.env
+.env.*
+
+# Logs
+logs
+*.log
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.sw?
