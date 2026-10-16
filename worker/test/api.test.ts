@@ -119,7 +119,7 @@ describe("worker", () => {
     expect(Object.keys(spec.paths).sort()).toEqual(["/budget", "/config", "/me", "/rate"])
   })
 
-  it("does not offer guest sign-in on a normal host (production)", async () => {
+  it("does not offer guest sign-in when GUEST_SIGN_IN is off", async () => {
     expect(await (await call("/api/config")).json()).toEqual({ guestSignIn: false })
     const res = await call("/api/auth/sign-in/anonymous", { method: "POST", body: "{}" })
     expect(res.status).toBe(404)

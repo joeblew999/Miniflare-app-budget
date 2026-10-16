@@ -19,9 +19,9 @@
       "migrations_dir": "migrations"
     }
   ],
-  // "Continue as guest" (Better Auth anonymous sign-in). Off in production, on in Previews.
+  // "Continue as guest" (Better Auth anonymous sign-in). On everywhere for now, production included.
   // Local dev (localhost) always allows it; see worker/auth.ts.
-  "vars": { "GUEST_SIGN_IN": "false" },
+  "vars": { "GUEST_SIGN_IN": "true" },
   // Previews (one per branch/PR) use a shared staging database, never production.
   // Migrations for it run from wrangler.preview-migrations.jsonc (npm run worker:preview).
   "previews": {

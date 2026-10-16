@@ -58,7 +58,8 @@ the client, load the vendored skills in `.claude/skills/` (`orpc`, `orpc-contrac
 - Deploying is a git push: `main` is production, and every other branch gets its own Preview on a staging database.
 - Never set Cloudflare up by hand. Anything missing goes into `worker:setup` or `env:setup`, so it stays repeatable. The
   only manual steps are creating tokens in the forms `env:setup` opens.
-- Guest sign-in (`GUEST_SIGN_IN`) is never `"true"` in production.
+- Guest sign-in (`GUEST_SIGN_IN` in `wrangler.jsonc`) is on everywhere for now, production included. Turning it off in
+  production is that one line.
 - `wrangler.jsonc` holds no account-specific ids except the staging database's; keep its two entries in step.
 - Agents (cloud sessions) get Cloudflare access with `env:lease`, never by asking for a token. They deploy their branch's
   Preview with `worker:preview`, never production.

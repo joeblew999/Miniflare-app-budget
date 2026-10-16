@@ -14,7 +14,7 @@ Run with `npm run <goal>`. Wireit runs what each one needs first, in order, and 
 | `app:preview` | `app:build`, `db:migrate` | Run the production build (dist/) in workerd (http://localhost:4173) |
 | `app:setup` |  | Set up this machine: install the VS Code extensions in .vscode/extensions.json and a browser for the checks (safe to re-run) |
 | `app:artifact -- [--no-check]` | `app:check` | Build the app and its Worker into one HTML file that runs with no server (dist/artifact/index.html, for a Claude artifact), then check it in a browser with the network blocked |
-| `app:smoke -- [--url <url>] [--offline]` |  | Smoke-test a running copy of the app over HTTP (production: read-only; Previews and local: full guest round trip) |
+| `app:smoke -- [--url <url>] [--offline]` |  | Smoke-test a running copy of the app over HTTP (read-only, plus a full guest round trip where guest sign-in is on) |
 | `app:verify` | `app:check`, `test:run`, `app:lint`, `docs:gen` | Runs app:check, test:run, app:lint, docs:gen |
 | `worker:deploy` | `app:verify`, `app:build` | Deploy the build in dist/ to production from your machine (credentials from your fnox production profile; the Worker keeps its secrets) |
 | `worker:ci` |  | Workers Builds' deploy command (after its app:build): migrate D1, then deploy with secrets from the environment |
