@@ -55,7 +55,7 @@ Rules:
 ## Folder layout
 
 ```
-artifact/       in-page Worker for `app:artifact`: answers /api/* inside the page (D1 = sql.js, cookie jar). Only glue, no app logic
+artifact/       glue for `app:artifact`: an oRPC link that calls the router in the page, D1 on sql.js, a cookie jar for Better Auth. No app logic
 cli/            project CLI: main.ts, run.ts, commands/<noun>.ts; smoke.ts (HTTP checks of a running app); cloudflare.ts (REST client), cloud.ts (setup/build/status/logs), project.ts (reads wrangler.jsonc, git remote)
 shared/         runtime-neutral code used by both src/ and worker/
   schema.ts         Zod schemas: the shape of a budget (types are inferred from these)
@@ -73,7 +73,7 @@ src/            React app
   App.tsx           sign-in gate, then the budget
   components/       app components; components/ui/ is managed by the shadcn CLI
   hooks/            use-budget.ts: load and autosave through the API
-  lib/              api.ts (oRPC client), auth-client.ts, theme.ts, storage.ts, utils.ts
+  lib/              api.ts (oRPC client), link.ts (where API calls go), auth-client.ts, theme.ts, storage.ts, utils.ts
   styles/           index.css (base preset), themes.css + themes.json (generated)
 .claude/skills/ vendored agent skills (oRPC)
 plans/          plans, named YYYY-MM-DD-NN-slug.md with the file's own name on the first line
@@ -119,7 +119,7 @@ Production deploys come from **Cloudflare Workers Builds**: Cloudflare builds th
 
 ## Showing the app in a Claude artifact
 
-An artifact can't reach any server (local or Cloudflare), so `npm run app:artifact` builds the real app **and the real Worker** into one HTML file, `dist/artifact/index.html`. `artifact/in-page-worker.ts` answers `/api/*` inside the page: D1 is SQLite (sql.js, set up from `migrations/`, kept in the browser's localStorage), guest sign-in is on, and nothing leaves the page. Publish that file as the artifact. Keep `artifact/` to glue only: app and API changes go in `src/`, `shared/` and `worker/` as usual, and the artifact picks them up on the next build.
+An artifact can't reach any server (local or Cloudflare), so `npm run app:artifact` builds the real app **and the real Worker** into one HTML file, `dist/artifact/index.html`. The build swaps one file, `src/lib/link.ts` (an `RPCLink` to `/api/rpc`), for `artifact/link.ts`, which calls the real router in the page with `createRouterClient` and the same `createContext` as the Worker (`worker/context.ts`). `artifact/in-page-worker.ts` provides D1 as SQLite (sql.js, set up from `migrations/`, kept in the browser's localStorage) and answers Better Auth's `/api/auth/*` requests with `worker/index.ts`. Guest sign-in is on, and nothing leaves the page. Publish that file as the artifact. Keep `artifact/` to glue only: app and API changes go in `src/`, `shared/` and `worker/` as usual, and the artifact picks them up on the next build.
 
 ## Verifying a deploy
 

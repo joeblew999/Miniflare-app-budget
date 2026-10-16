@@ -5,30 +5,23 @@ import { defineConfig } from 'vite'
 import { viteSingleFile } from 'vite-plugin-singlefile'
 
 // The artifact build (`npm run app:artifact`): the same React app and the same Worker, bundled into
-// one self-contained HTML file. artifact/in-page-worker.ts loads first and answers /api/* in the page.
+// one self-contained HTML file. The oRPC client's link is swapped for artifact/link.ts, which calls the
+// router in the page; artifact/in-page-worker.ts provides the database and answers Better Auth's requests.
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
     viteSingleFile(),
-    {
-      name: 'in-page-worker',
-      transformIndexHtml: {
-        order: 'pre',
-        handler: (html) => html.replace(
-          '<script type="module" src="/src/main.tsx"></script>',
-          '<script type="module" src="/artifact/in-page-worker.ts"></script>\n    <script type="module" src="/src/main.tsx"></script>',
-        ),
-      },
-    },
   ],
   resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-      '@shared': path.resolve(__dirname, './shared'),
+    alias: [
+      // The one swap: call the router in the page instead of over HTTP.
+      { find: /^@\/lib\/link$/, replacement: path.resolve(__dirname, './artifact/link.ts') },
+      { find: '@shared', replacement: path.resolve(__dirname, './shared') },
+      { find: '@', replacement: path.resolve(__dirname, './src') },
       // sql.js's asm.js build: plain JavaScript, no WebAssembly, so it runs under strict page policies.
-      'sql.js': path.resolve(__dirname, './node_modules/sql.js/dist/sql-asm.js'),
-    },
+      { find: 'sql.js', replacement: path.resolve(__dirname, './node_modules/sql.js/dist/sql-asm.js') },
+    ],
   },
   build: { outDir: 'dist/artifact', emptyOutDir: true },
 })

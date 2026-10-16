@@ -1,7 +1,9 @@
-// Runs the real Worker (worker/index.ts) inside the page, for the artifact build (`npm run app:artifact`).
-// A Claude artifact can't reach any server, so the page answers its own /api/* requests:
+// Runs the real Worker inside the page, for the artifact build (`npm run app:artifact`).
+// A Claude artifact can't reach any server, so:
 //   - D1 is SQLite in the page (sql.js), set up from the repo's migrations/ and kept in localStorage;
-//   - session cookies live in a small cookie jar, because a page can't set cookies on its own fetches.
+//   - API calls from the oRPC client go straight to the router (artifact/link.ts), with no HTTP;
+//   - other /api/* fetches (Better Auth's client) are answered by worker/index.ts in the page,
+//     with session cookies in a small jar, because a page can't set cookies on its own fetches.
 // Nothing else changes: the React app, the contract, the router, Better Auth and the D1 queries are the real ones.
 import initSqlJs from "sql.js"
 import type { Database } from "sql.js"
@@ -30,7 +32,7 @@ const migrations = import.meta.glob<string>("../migrations/*.sql", { query: "?ra
 const toBase64 = (b: Uint8Array) => { let s = ""; for (const c of b) s += String.fromCharCode(c); return btoa(s) }
 const fromBase64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0))
 
-const ready: Promise<{ db: Database; env: Env }> = (async () => {
+export const ready: Promise<{ db: Database; env: Env }> = (async () => {
   const SQL = await initSqlJs()
   const saved = load(DB_KEY)
   const db = saved ? new SQL.Database(fromBase64(saved)) : new SQL.Database()
@@ -84,20 +86,30 @@ class InPageRequest extends Request {
 }
 
 const nativeFetch = globalThis.fetch.bind(globalThis)
-const origin = (globalThis as unknown as { location: { origin: string } }).location.origin
+export const origin = (globalThis as unknown as { location: { origin: string } }).location.origin
+
+/** Headers a same-origin request would carry: Origin plus the session cookies. */
+export function requestHeaders(from?: Headers): Headers {
+  const headers = new Headers(from)
+  headers.set("origin", origin)
+  if (jar.size) headers.set("cookie", [...jar].map(([k, v]) => `${k}=${v}`).join("; "))
+  return headers
+}
+
+/** Save the database to localStorage after a write. */
+export async function persist(): Promise<void> {
+  const { db } = await ready
+  save(DB_KEY, toBase64(db.export()))
+}
 
 globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   const request = new Request(input, init)
   const url = new URL(request.url)
   if (url.origin !== origin || !url.pathname.startsWith("/api/")) return nativeFetch(input, init)
 
-  const { db, env } = await ready
-  const headers = new Headers(request.headers)
-  headers.set("origin", origin)
-  if (jar.size) headers.set("cookie", [...jar].map(([k, v]) => `${k}=${v}`).join("; "))
-
-  const response = await worker.fetch(new InPageRequest(request, headers) as Parameters<typeof worker.fetch>[0], env)
+  const { env } = await ready
+  const response = await worker.fetch(new InPageRequest(request, requestHeaders(request.headers)) as Parameters<typeof worker.fetch>[0], env)
   storeCookies(setCookies.get(response) ?? [])
-  if (request.method !== "GET") save(DB_KEY, toBase64(db.export()))
+  if (request.method !== "GET") await persist()
   return response
 }

@@ -1,14 +1,9 @@
-// Typed API client, built from the shared contract. Talks to the Worker's RPC endpoint.
+// Typed API client, built from the shared contract. Where calls go is decided by the link (src/lib/link.ts).
 import type { RouterContractClient } from "@orpc/contract"
 import { createORPCClient } from "@orpc/client"
-import { RPCLink } from "@orpc/client/fetch"
 import { createTanstackQueryUtils } from "@orpc/tanstack-query"
 import type { Contract } from "@shared/contract"
-
-const link = new RPCLink({
-  origin: window.location.origin,
-  url: "/api/rpc", // must match the Worker's RPCHandler prefix
-})
+import { link } from "@/lib/link"
 
 export const client: RouterContractClient<Contract> = createORPCClient(link)
 
